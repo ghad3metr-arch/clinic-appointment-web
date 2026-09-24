@@ -6,8 +6,6 @@
 <meta name="theme-color" content="#1f6f5b">
 <title>Tanara v10 — تن‌آرا | مدیریت مرکز ماساژ</title>
 <style>
-hero-photo{display:none!important}
-.dashboard-hero img{display:none!important}<style>
 :root{--g:#1f6f5b;--g2:#2f8b72;--bg:#f4f7f5;--ink:#18352d;--muted:#6a7772;--danger:#b33;--card:#fff;--line:#d9e3df;--warn:#fff3c4;--ok:#dff4e8;--blue:#e7f0ff}
 *{box-sizing:border-box}body{font-family:Tahoma,Arial,sans-serif;margin:0;background:var(--bg);color:var(--ink);line-height:1.7}
 header{background:linear-gradient(135deg,var(--g),var(--g2));color:#fff;padding:14px 16px;text-align:center}header .brand{display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap}header .brand img{width:78px;height:78px;object-fit:contain;border-radius:16px;background:#fff;padding:4px}header h2{margin:0 0 4px}header small{opacity:.9}header .contact{margin-top:7px;font-weight:bold}header .contact a{color:#fff;text-decoration:none}
@@ -36,7 +34,22 @@ body{background:var(--bg);color:var(--ink)}#cloudBar{background:#eaf8f4;color:#0
 nav{position:fixed;left:0;top:0;bottom:0;width:150px;z-index:50;display:flex;flex-direction:column;gap:4px;padding:118px 7px 12px;background:#fff;border-right:1px solid #d9ebe7;overflow:auto}nav button{flex:none;width:100%;min-width:0;padding:11px 8px;border-radius:10px;background:#fff;color:var(--ink);text-align:right;font-size:13px}nav button.active,nav button:hover{background:#0a827a;color:#fff}
 main{margin-left:150px;max-width:none;padding:0 18px 35px}.page{max-width:1100px}.dashboard-hero{display:grid;grid-template-columns:1fr 1.15fr;background:#fff;border-radius:0 0 18px 18px;padding:0;margin:0 0 14px;overflow:hidden;border:1px solid #e0eee9}.hero-copy{background:linear-gradient(135deg,#eaf8f4,#dff3ee);padding:28px 30px;display:flex;flex-direction:column;justify-content:center}.hero-copy h1{font-size:27px;line-height:1.55;color:#0a7169;margin:0 0 8px}.hero-copy p{font-size:14px;color:#5f7773;margin:0}.leaf-mark{font-size:28px}.hero-photo{min-height:190px}.hero-photo img{width:100%;height:100%;object-fit:cover;display:block}.quick-grid{grid-template-columns:repeat(4,1fr)}.quick-grid button{border:1px solid #dcebe7;border-radius:15px;background:#fff}.featured-services{background:#fff;border:1px solid #dfebe8;border-radius:18px;padding:14px;margin:8px 0 14px}.featured-title{font-size:18px;font-weight:bold;margin-bottom:10px}.service-pills{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}.service-pills>div{background:#f2faf8;border-radius:14px;padding:10px 6px;text-align:center;min-height:88px}.service-pills span{display:block;font-size:24px;color:#0a827a}.service-pills b{display:block;font-size:12px}.service-pills small{color:var(--muted);font-size:10px}.card,form,.item,.panel{border-radius:16px;border:1px solid #e1ece9}
 @media(max-width:800px){.tanara-header{margin-left:0}.tanara-topbar{grid-template-columns:48px 1fr 155px;min-height:100px;padding:8px 9px}.tanara-topbar:after{width:260px;height:130px;left:-100px;top:-90px}.menu-icon{width:40px;height:40px;font-size:22px}.tanara-logo-wrap{gap:5px}.tanara-logo-wrap img{width:64px;height:64px}.logo-caption{font-size:8px}.logo-caption strong{font-size:16px}.tanara-contact{font-size:10px}.welcome-mini{font-size:12px}nav{position:sticky;top:0;left:auto;bottom:auto;width:auto;height:auto;flex-direction:row;padding:6px;overflow-x:auto;border-right:0;border-bottom:1px solid #d9ebe7}nav button{width:auto;min-width:86px;text-align:center;font-size:11px;padding:8px 6px}main{margin-left:0;padding:0 8px 25px}.dashboard-hero{grid-template-columns:1fr 1.1fr}.hero-copy{padding:18px 15px}.hero-copy h1{font-size:19px}.hero-copy p{font-size:11px}.hero-photo{min-height:145px}.quick-grid{grid-template-columns:repeat(2,1fr)}.service-pills{grid-template-columns:repeat(3,1fr)}}
-</style></head>
+</style>
+<style id="tanara-final-fixes">
+.calendar-head{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0}
+.calendar-head button{min-width:42px}.calendar-title{font-weight:800;font-size:18px;flex:1;text-align:center}
+.day-strip{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin:8px 0}
+.day-chip{padding:9px 4px;text-align:center;border:1px solid var(--line);border-radius:12px;background:#fff;cursor:pointer}
+.day-chip.active{background:var(--g);color:#fff}
+.day-chip small{display:block;font-size:10px;opacity:.8}
+.slot-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.slot-card{padding:11px;border:1px solid var(--line);border-radius:12px;background:#fff}
+.slot-card.available{background:#e8f7f1}.slot-card.booked{background:#fff3c4}.slot-card.disabled{background:#f3f3f3;opacity:.65}
+.pay-link{margin-top:7px}.edit-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+@media(max-width:600px){.day-strip{grid-template-columns:repeat(4,1fr)}.slot-grid{grid-template-columns:repeat(2,1fr)}.edit-grid{grid-template-columns:1fr}}
+</style>
+
+</head>
 <body>
 <div id="authGate"><div id="authBox">
   <h2>ورود به تن‌آرا</h2>
@@ -277,4 +290,129 @@ setInterval(checkReminders,30000);
 function checkReminderServer(){const el=document.getElementById("serverState");if(el){el.textContent='داده‌ها در Supabase ذخیره می‌شوند';el.className='badge ok'}}
 checkReminderServer();
 </script>
+
+<script id="tanara-final-fixes-js">
+(function(){
+  const escT = s => (typeof esc==='function' ? esc(String(s??'')) : String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])));
+  const isoToday = () => typeof today==='function' ? today() : new Date().toISOString().slice(0,10);
+  const fa = x => typeof faDate==='function' ? faDate(x,true) : x;
+  const shift = (iso,n) => {const d=new Date(iso+'T12:00:00');d.setDate(d.getDate()+n);return d.toISOString().slice(0,10)};
+  let apptDate=isoToday(), availDate=isoToday();
+
+  function paidFor(id){return (d.p||[]).filter(p=>String(p.appointmentId||'')===String(id)).reduce((s,p)=>s+Number(p.m||0),0)}
+  function payState(a){const total=Number(a.m||0), paid=paidFor(a.id); return total>0&&paid>=total?'پرداخت‌شده':paid>0?'پرداخت ناقص':'پرداخت‌نشده'}
+  function payClass(a){const s=payState(a);return s==='پرداخت‌شده'?'ok':s==='پرداخت ناقص'?'warn':'cancel'}
+
+  function renderAppointmentCalendar(){
+    const box=$('alist'); if(!box)return;
+    const days=[]; for(let i=-3;i<=3;i++)days.push(shift(apptDate,i));
+    const arr=(d.a||[]).filter(a=>a.date===apptDate).sort((x,y)=>String(x.time).localeCompare(String(y.time)));
+    box.innerHTML =
+      '<div class="calendar-head"><button class="smallbtn" onclick="tanaraApptPrev()">‹</button>'+
+      '<div class="calendar-title">'+fa(apptDate)+'</div>'+
+      '<button class="smallbtn" onclick="tanaraApptNext()">›</button>'+
+      '<button class="smallbtn" onclick="tanaraApptToday()">امروز</button></div>'+
+      '<div class="day-strip">'+days.map(x=>'<div class="day-chip '+(x===apptDate?'active':'')+'" onclick="tanaraPickApptDate(\''+x+'\')">'+fa(x)+'<small>'+((d.a||[]).filter(a=>a.date===x&&a.status!=='cancelled').length)+' نوبت</small></div>').join('')+'</div>'+
+      (arr.map(a=>{
+        const ps=payState(a);
+        return '<div class="item"><div class="client-head"><div><b>'+escT(a.time)+' — '+escT(cname(a.c))+'</b><br><span class="date-fa">'+fa(a.date)+'</span> · '+escT(a.s)+' · '+money(a.m)+' تومان</div><span class="badge '+payClass(a)+'">'+ps+'</span></div>'+
+        '<div class="actions"><button class="smallbtn" onclick="setStatus('+JSON.stringify(a.id)+',\'confirmed\')">تأیید</button><button class="smallbtn" onclick="setStatus('+JSON.stringify(a.id)+',\'done\')">انجام شد</button><button class="smallbtn" onclick="tanaraPayAppt('+JSON.stringify(a.id)+')">ثبت پرداخت</button><button class="smallbtn danger" onclick="delAppt('+JSON.stringify(a.id)+')">حذف</button></div></div>'
+      }).join('') || '<div class="item empty">برای این روز نوبتی ثبت نشده است.</div>');
+  }
+  window.tanaraPickApptDate=x=>{apptDate=x;renderAppointmentCalendar()};
+  window.tanaraApptPrev=()=>{apptDate=shift(apptDate,-1);renderAppointmentCalendar()};
+  window.tanaraApptNext=()=>{apptDate=shift(apptDate,1);renderAppointmentCalendar()};
+  window.tanaraApptToday=()=>{apptDate=isoToday();renderAppointmentCalendar()};
+  window.renderAppts=renderAppointmentCalendar;
+
+  function paymentAppointmentOptions(){
+    const sel=$('paymentAppointment'), pc=$('pc'); if(!sel||!pc)return;
+    const cid=pc.value;
+    sel.innerHTML='<option value="">بدون اتصال به نوبت</option>'+
+      (d.a||[]).filter(a=>String(a.c)===String(cid)&&a.status!=='cancelled').sort((x,y)=>(y.date+y.time).localeCompare(x.date+x.time))
+      .map(a=>'<option value="'+escT(a.id)+'">'+escT(a.date+' '+a.time+' — '+cname(a.c)+' — '+money(a.m)+' تومان')+'</option>').join('');
+  }
+  window.tanaraFillPayAmount=()=>{
+    const id=$('paymentAppointment')?.value, a=(d.a||[]).find(x=>String(x.id)===String(id));
+    if(a&&$('pa')) $('pa').value=Math.max(0,Number(a.m||0)-paidFor(a.id));
+  };
+  window.tanaraPayAppt=id=>{
+    const a=(d.a||[]).find(x=>String(x.id)===String(id)); if(!a)return;
+    if($('pc')){$('pc').value=a.c;paymentAppointmentOptions();if($('paymentAppointment'))$('paymentAppointment').value=a.id;window.tanaraFillPayAmount();}
+    if(typeof showPageById==='function')showPageById('pay');
+  };
+  function ensurePaymentLink(){
+    const pc=$('pc'); if(!pc)return;
+    let sel=$('paymentAppointment');
+    if(!sel){
+      const wrap=document.createElement('div');wrap.className='pay-link';
+      wrap.innerHTML='<label>اتصال به نوبت (اختیاری)</label><select id="paymentAppointment" onchange="tanaraFillPayAmount()"></select>';
+      pc.parentNode.insertBefore(wrap,pc.nextSibling); sel=$('paymentAppointment');
+    }
+    paymentAppointmentOptions();
+  }
+  window.addPay=async function(e){
+    e.preventDefault(); if(!currentUser)return;
+    const appointmentId=$('paymentAppointment')?.value||null, amount=Number($('pa').value||0);
+    if(!amount){alert('مبلغ پرداختی را وارد کنید.');return}
+    const row={owner_id:currentUser.id,client_id:$('pc').value,amount,payment_method:$('payMethod').value,payment_date:$('pd').value,appointment_id:appointmentId};
+    const {data,error}=await sb.from('payments').insert(row).select('id,client_id,amount,payment_method,payment_date,appointment_id').single();
+    if(error){alert('ثبت پرداخت ناموفق بود: '+error.message);return}
+    d.p.push({id:data.id,c:data.client_id,m:Number(data.amount||0),date:data.payment_date,method:data.payment_method,appointmentId:data.appointment_id});
+    if(appointmentId){
+      const paid=paidFor(appointmentId);
+      await sb.from('appointments').update({paid_amount:paid}).eq('id',appointmentId);
+      const a=d.a.find(x=>String(x.id)===String(appointmentId)); if(a)a.paid=paid;
+    }
+    e.target.reset(); if(typeof setupPaymentJalali==='function')setupPaymentJalali(isoToday());
+    ensurePaymentLink(); if(typeof save==='function')save(); if(typeof render==='function')render();
+    alert('پرداخت ثبت شد و به نوبت متصل شد.');
+  };
+
+  function renderToday(){
+    const box=$('today'); if(!box)return;
+    const arr=(d.a||[]).filter(a=>a.date===isoToday()&&a.status!=='cancelled').sort((x,y)=>String(x.time).localeCompare(String(y.time)));
+    box.innerHTML=arr.map(a=>'<div class="item"><div class="client-head"><div><b>'+escT(a.time)+' — '+escT(cname(a.c))+'</b><br>'+escT(a.s)+' · '+money(a.m)+' تومان</div><span class="badge '+payClass(a)+'">'+payState(a)+'</span></div></div>').join('')||'<div class="item empty">برای امروز نوبتی ثبت نشده است.</div>';
+    const head=box.parentElement?.querySelector('h3'); if(head)head.textContent='نوبت‌های امروز ('+arr.length+')';
+  }
+
+  function renderAvailabilityCalendar(){
+    const box=$('availabilityList'); if(!box)return;
+    const days=[]; for(let i=-3;i<=3;i++)days.push(shift(availDate,i));
+    const slots=(availability||[]).filter(x=>x.date===availDate).sort((a,b)=>a.start.localeCompare(b.start));
+    const booked=(d.a||[]).filter(a=>a.date===availDate&&a.status!=='cancelled');
+    box.innerHTML='<div class="calendar-head"><button class="smallbtn" onclick="tanaraAvailPrev()">‹</button><div class="calendar-title">'+fa(availDate)+'</div><button class="smallbtn" onclick="tanaraAvailNext()">›</button><button class="smallbtn" onclick="tanaraAvailToday()">امروز</button></div>'+
+      '<div class="day-strip">'+days.map(x=>'<div class="day-chip '+(x===availDate?'active':'')+'" onclick="tanaraPickAvailDate(\''+x+'\')">'+fa(x)+'<small>'+((availability||[]).filter(s=>s.date===x).length)+' زمان</small></div>').join('')+'</div>'+
+      '<div class="slot-grid">'+(slots.map(x=>{
+        const used=booked.some(a=>a.time>=x.start&&a.time<x.end);
+        return '<div class="slot-card '+(x.active===false?'disabled':used?'booked':'available')+'"><b>'+escT(x.start)+' تا '+escT(x.end)+'</b><br><small>'+ (x.active===false?'غیرفعال':used?'دارای نوبت':'آزاد') +'</small><div class="actions"><button class="smallbtn" onclick="editAvailability('+JSON.stringify(x.id)+')">ویرایش</button><button class="smallbtn danger" onclick="delAvailability('+JSON.stringify(x.id)+')">حذف</button></div></div>'
+      }).join('')||'<div class="item empty">برای این روز زمان آزادی ثبت نشده است.</div>')+'</div>';
+  }
+  window.tanaraPickAvailDate=x=>{availDate=x;renderAvailabilityCalendar()};
+  window.tanaraAvailPrev=()=>{availDate=shift(availDate,-1);renderAvailabilityCalendar()};
+  window.tanaraAvailNext=()=>{availDate=shift(availDate,1);renderAvailabilityCalendar()};
+  window.tanaraAvailToday=()=>{availDate=isoToday();renderAvailabilityCalendar()};
+  window.renderAvailability=renderAvailabilityCalendar;
+  window.editAvailability=async id=>{
+    const x=(availability||[]).find(v=>String(v.id)===String(id)); if(!x)return;
+    const start=prompt('ساعت شروع',x.start); if(start===null)return;
+    const end=prompt('ساعت پایان',x.end); if(end===null)return;
+    const minDays=prompt('چند روز قبل امکان رزرو باشد؟',x.minDays||0); if(minDays===null)return;
+    if(end<=start){alert('ساعت پایان باید بعد از شروع باشد.');return}
+    const {error}=await sb.from('availability_slots').update({start_time:start,end_time:end,min_days_before:Number(minDays)||0}).eq('id',id);
+    if(error){alert('ویرایش ناموفق بود: '+error.message);return}
+    x.start=start;x.end=end;x.minDays=Number(minDays)||0;renderAvailabilityCalendar();
+  };
+
+  const oldRender=window.render;
+  if(oldRender){
+    window.render=function(){
+      oldRender.apply(this,arguments);
+      try{renderAppointmentCalendar();renderToday();ensurePaymentLink();renderAvailabilityCalendar()}catch(e){console.error(e)}
+    };
+  }
+  setTimeout(()=>{try{ensurePaymentLink();renderAppointmentCalendar();renderToday();renderAvailabilityCalendar()}catch(e){}},700);
+})();
+</script>
+
 </body></html>
