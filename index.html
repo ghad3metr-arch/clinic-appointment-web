@@ -431,4 +431,138 @@ checkReminderServer();
 })();
 </script>
 
+
+<script id="tanara-v11-fixes">
+(function(){
+  if(window.__tanaraV11Loaded)return;
+  window.__tanaraV11Loaded=true;
+  const E=x=>typeof esc==='function'?esc(String(x??'')):String(x??'');
+  const EA=x=>typeof escAttr==='function'?escAttr(String(x??'')):E(x);
+  const T=()=>typeof today==='function'?today():new Date().toISOString().slice(0,10);
+  const money0=x=>typeof money==='function'?money(Number(x||0)):Number(x||0).toLocaleString('fa-IR');
+  const clientName=id=>typeof cname==='function'?cname(id):((d.c||[]).find(c=>String(c.id)===String(id))?.n||'بدون نام');
+  const paidFor2=id=>(d.p||[]).filter(p=>String(p.appointmentId||'')===String(id)).reduce((n,p)=>n+Number(p.m||0),0);
+  const payState2=a=>{const total=Number(a.m||0),paid=paidFor2(a.id);return total>0&&paid>=total?'پرداخت‌شده':paid>0?'پرداخت ناقص':'پرداخت‌نشده'};
+  const payClass2=a=>{const s=payState2(a);return s==='پرداخت‌شده'?'ok':s==='پرداخت ناقص'?'warn':'cancel'};
+
+  // فهرست مراجع: فقط نام، موبایل و شغل نمایش داده شود.
+  window.renderClients=function(){
+    const q=($('clientSearch')?.value||'').trim().toLowerCase();
+    const arr=(d.c||[]).filter(c=>(c.n+' '+c.p+' '+(c.occupation||'')).toLowerCase().includes(q));
+    $('clist').innerHTML=arr.map(c=>'<div class="item">'+
+      '<div class="client-head"><div><div class="client-name">'+E(c.n)+'</div>'+
+      '<span class="muted">'+E(c.p||'بدون شماره')+'</span>'+
+      (c.occupation?'<br><span class="muted">شغل: '+E(c.occupation)+'</span>':'')+
+      '</div></div>'+
+      '<div class="actions">'+
+      (c.p?'<a href="tel:'+EA(c.p)+'"><button type="button" class="smallbtn">تماس</button></a>':'')+
+      '<button type="button" class="smallbtn" onclick="editClient('+JSON.stringify(c.id)+')">ویرایش</button>'+
+      '<button type="button" class="smallbtn danger" onclick="delClient('+JSON.stringify(c.id)+')">حذف</button>'+
+      '</div></div>').join('')||'<div class="item empty">مراجعی پیدا نشد.</div>';
+  };
+
+  function appointmentCards(date){
+    const arr=(d.a||[]).filter(a=>a.date===date).sort((a,b)=>String(a.time).localeCompare(String(b.time)));
+    return arr.map(a=>{
+      const ps=payState2(a);
+      return '<div class="item" onclick="tanaraPayAppt('+JSON.stringify(a.id)+')" style="cursor:pointer">'+
+        '<div class="client-head"><div><b>'+E(a.time)+' — '+E(clientName(a.c))+'</b><br>'+
+        '<span class="date-fa">'+(typeof faDate==='function'?faDate(a.date):a.date)+'</span> · '+E(a.s)+' · '+money0(a.m)+' تومان</div>'+
+        '<button type="button" class="badge '+payClass2(a)+' payment-badge" onclick="event.stopPropagation();tanaraPayAppt('+JSON.stringify(a.id)+')" title="برای ثبت پرداخت بزنید">'+ps+'</button></div>'+
+        '<div class="actions" onclick="event.stopPropagation()">'+
+        '<button type="button" class="smallbtn" onclick="setStatus('+JSON.stringify(a.id)+',\'confirmed\')">تأیید</button>'+
+        '<button type="button" class="smallbtn" onclick="setStatus('+JSON.stringify(a.id)+',\'done\')">انجام شد</button>'+
+        '<button type="button" class="smallbtn" onclick="tanaraPayAppt('+JSON.stringify(a.id)+')">ثبت پرداخت</button>'+
+        '<button type="button" class="smallbtn danger" onclick="delAppt('+JSON.stringify(a.id)+')">حذف</button>'+
+        '</div></div>';
+    }).join('')||'<div class="item empty">برای این روز نوبتی ثبت نشده است.</div>';
+  }
+
+  window.renderAppts=function(){
+    const box=$('alist');if(!box)return;
+    const date=window.__tanaraApptDate||T();
+    const days=[];for(let i=-3;i<=3;i++){const z=new Date(date+'T12:00:00');z.setDate(z.getDate()+i);days.push(z.toISOString().slice(0,10))}
+    box.innerHTML='<div class="calendar-head"><button type="button" class="smallbtn" onclick="tanaraApptPrev()">‹</button>'+
+      '<div class="calendar-title">'+(typeof faDate==='function'?faDate(date):date)+'</div>'+
+      '<button type="button" class="smallbtn" onclick="tanaraApptNext()">›</button>'+
+      '<button type="button" class="smallbtn" onclick="tanaraApptToday()">امروز</button></div>'+
+      '<div class="day-strip">'+days.map(x=>'<div class="day-chip '+(x===date?'active':'')+'" onclick="tanaraPickApptDate(\''+x+'\')">'+
+      (typeof faDate==='function'?faDate(x):x)+'<small>'+((d.a||[]).filter(a=>a.date===x&&a.status!=='cancelled').length)+' نوبت</small></div>').join('')+'</div>'+
+      appointmentCards(date);
+  };
+  window.tanaraPickApptDate=x=>{window.__tanaraApptDate=x;window.renderAppts()};
+  window.tanaraApptPrev=()=>{const z=new Date((window.__tanaraApptDate||T())+'T12:00:00');z.setDate(z.getDate()-1);window.__tanaraApptDate=z.toISOString().slice(0,10);window.renderAppts()};
+  window.tanaraApptNext=()=>{const z=new Date((window.__tanaraApptDate||T())+'T12:00:00');z.setDate(z.getDate()+1);window.__tanaraApptDate=z.toISOString().slice(0,10);window.renderAppts()};
+  window.tanaraApptToday=()=>{window.__tanaraApptDate=T();window.renderAppts()};
+
+  // با کلیک روی «پرداخت‌نشده» مستقیماً وارد فرم پرداخت همان نوبت می‌شویم.
+  window.tanaraPayAppt=async function(id){
+    const a=(d.a||[]).find(x=>String(x.id)===String(id));if(!a)return;
+    if(typeof showPageById==='function')showPageById('pay');
+    const pc=$('pc');
+    if(pc){
+      pc.value=a.c;
+      if(typeof window.tanaraFillPayAmount==='function')window.tanaraFillPayAmount();
+      const sel=$('paymentAppointment');
+      if(sel){sel.value=a.id}
+      if($('pa'))$('pa').value=Math.max(0,Number(a.m||0)-paidFor2(a.id));
+      if($('pt')&&!$('pt').value)$('pt').value=new Date().toTimeString().slice(0,5);
+    }
+    setTimeout(()=>{const f=document.querySelector('#pay form');if(f)f.scrollIntoView({behavior:'smooth',block:'start'})},100);
+  };
+
+  // حذف نوبت: ابتدا وابسته‌ها، سپس خود نوبت.
+  window.delAppt=async function(id){
+    if(!confirm('این نوبت و اطلاعات پرداخت/یادآوری وابسته حذف شود؟'))return;
+    for(const table of ['payments','reminders','session_notes']){
+      const r=await sb.from(table).delete().eq('appointment_id',id);
+      if(r.error && !/does not exist|relation .* not found/i.test(r.error.message||'')){
+        alert('حذف اطلاعات وابسته ناموفق بود: '+r.error.message);return;
+      }
+    }
+    const r=await sb.from('appointments').delete().eq('id',id);
+    if(r.error){alert('حذف نوبت ناموفق بود: '+r.error.message);return}
+    d.a=(d.a||[]).filter(x=>String(x.id)!==String(id));
+    d.p=(d.p||[]).filter(x=>String(x.appointmentId||'')!==String(id));
+    if(typeof save==='function')save();
+    if(typeof render==='function')render();
+    alert('نوبت با موفقیت حذف شد.');
+  };
+
+  // گزارش درآمد امروز: با کلیک روی کارت، افراد و مبلغ‌های پرداخت‌شده امروز نمایش داده می‌شود.
+  window.showTodayIncome=function(){
+    const date=T();
+    const aps=(d.a||[]).filter(a=>a.date===date&&a.status!=='cancelled').sort((a,b)=>String(a.time).localeCompare(String(b.time)));
+    const payments=(d.p||[]).filter(p=>p.date===date);
+    const total=payments.reduce((n,p)=>n+Number(p.m||0),0);
+    let panel=$('todayIncomePanel');
+    if(!panel){panel=document.createElement('div');panel.id='todayIncomePanel';panel.className='panel';document.getElementById('reports')?.appendChild(panel)}
+    panel.innerHTML='<div class="section-title"><h4>جزئیات درآمد امروز</h4><button type="button" class="smallbtn" onclick="this.closest(\'#todayIncomePanel\').remove()">بستن</button></div>'+
+      '<div class="notice">تاریخ امروز: '+(typeof faDate==='function'?faDate(date):date)+' — دریافتی امروز: <b>'+money0(total)+' تومان</b></div>'+
+      (aps.map(a=>{const paid=paidFor2(a.id);return '<div class="item"><b>'+E(a.time)+' — '+E(clientName(a.c))+'</b><br>'+E(a.s)+' · مبلغ جلسه '+money0(a.m)+' تومان<br><span class="muted">پرداخت ثبت‌شده برای این نوبت: '+money0(paid)+' تومان</span></div>'}).join('')||'<div class="item empty">امروز نوبتی ثبت نشده است.</div>');
+    panel.scrollIntoView({behavior:'smooth',block:'start'});
+  };
+
+  function refreshTodayBox(){
+    const box=$('today');if(!box)return;
+    const date=T();
+    const arr=(d.a||[]).filter(a=>a.date===date&&a.status!=='cancelled').sort((a,b)=>String(a.time).localeCompare(String(b.time)));
+    box.innerHTML=arr.map(a=>'<div class="item" onclick="tanaraPayAppt('+JSON.stringify(a.id)+')" style="cursor:pointer"><div class="client-head"><div><b>'+E(a.time)+' — '+E(clientName(a.c))+'</b><br>'+E(a.s)+' · '+money0(a.m)+' تومان</div><button type="button" class="badge '+payClass2(a)+'" onclick="event.stopPropagation();tanaraPayAppt('+JSON.stringify(a.id)+')">'+payState2(a)+'</button></div></div>').join('')||'<div class="item empty">برای امروز نوبتی ثبت نشده است.</div>';
+    const head=box.parentElement?.querySelector('h3');if(head)head.textContent='نوبت‌های امروز ('+arr.length+')';
+  }
+
+  function wireReportCard(){
+    const el=$('rToday')?.closest('.card');
+    if(el&&!el.__wired){el.__wired=true;el.style.cursor='pointer';el.title='مشاهده افراد و پرداخت‌های امروز';el.addEventListener('click',window.showTodayIncome)}
+  }
+
+  const oldRender=window.render;
+  window.render=function(){
+    oldRender.apply(this,arguments);
+    try{window.__tanaraApptDate=window.__tanaraApptDate||T();window.renderAppts();refreshTodayBox();wireReportCard()}catch(e){console.error('Tanara v11 render fix',e)}
+  };
+  setTimeout(()=>{try{window.__tanaraApptDate=T();window.renderAppts();refreshTodayBox();wireReportCard()}catch(e){}},800);
+})();
+</script>
+
 </body></html>
