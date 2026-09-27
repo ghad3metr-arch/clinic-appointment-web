@@ -49,6 +49,10 @@ main{margin-left:150px;max-width:none;padding:0 18px 35px}.page{max-width:1100px
 @media(max-width:600px){.day-strip{grid-template-columns:repeat(4,1fr)}.slot-grid{grid-template-columns:repeat(2,1fr)}.edit-grid{grid-template-columns:1fr}}
 </style>
 
+
+<style id="tanara-notification-folders-style">
+.notif-tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}.notif-tabs button{font-weight:700}.notif-tabs button.active{background:#0a827a;color:#fff}.notif-section-title{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:10px 0}.notif-read-btn{background:#e8f7f3;color:#0a7169}.notif-unread-btn{background:#fff3c4;color:#7a5b00}.notif-empty{padding:18px;text-align:center;color:#667c79;background:#fff;border:1px dashed #cdded9;border-radius:14px}.new-booking.notif-read{opacity:.82;border-right-color:#b7c9c4}.new-booking.notif-unread{border-right-color:#0a827a}.notif-count{font-size:11px;opacity:.8}
+</style>
 </head>
 <body>
 <div id="authGate"><div id="authBox">
@@ -72,8 +76,12 @@ main{margin-left:150px;max-width:none;padding:0 18px 35px}.page{max-width:1100px
 </section>
 
 <section id="notifications" class="page">
-<div class="section-title"><h3>اعلان‌های رزرو جدید</h3><div class="actions"><button class="smallbtn" onclick="refreshBookingNotifications()">به‌روزرسانی</button><button class="smallbtn" onclick="markBookingNotificationsRead()">خواندم</button></div></div>
-<div class="notice">🔔 هر وقت مراجع از صفحه رزرو عمومی برایت نوبت جدید ثبت کند، اینجا نام مراجع، خدمت، تاریخ شمسی و ساعت نمایش داده می‌شود. اگر اعلان مرورگر فعال باشد، هنگام باز بودن برنامه یک اعلان هم می‌بینی.</div>
+<div class="section-title"><h3>اعلان‌های رزرو جدید</h3><div class="actions"><button class="smallbtn" onclick="refreshBookingNotifications()">به‌روزرسانی</button><button class="smallbtn" onclick="markAllBookingNotificationsRead()">همه را خواندم</button></div></div>
+<div class="notice">🔔 رزروهای جدید در «نخوانده‌ها» می‌آیند. وقتی هر اعلان را روی «خواندم» بزنید، به پوشه «خوانده‌شده‌ها» منتقل می‌شود.</div>
+<div class="notif-tabs">
+<button id="notifTabUnread" type="button" class="active" onclick="showNotificationFolder('unread')">نخوانده‌ها <span id="notifUnreadCount" class="notif-count"></span></button>
+<button id="notifTabRead" type="button" onclick="showNotificationFolder('read')">خوانده‌شده‌ها <span id="notifReadCount" class="notif-count"></span></button>
+</div>
 <div id="bookingNotifications"></div>
 </section>
 
@@ -415,255 +423,78 @@ checkReminderServer();
 })();
 </script>
 
-
-<!-- TANARA FIXES 2026-09-27 -->
-<script>
+<script id="tanara-payment-debt-cards-fix">
 (function(){
-  'use strict';
-  if(window.__tanaraFixes20260927)return;
-  window.__tanaraFixes20260927=true;
-
-  const $=id=>document.getElementById(id);
-  const E=x=>typeof window.esc==='function'?window.esc(String(x??'')):String(x??'');
-  const M=x=>typeof window.money==='function'?window.money(Number(x||0)):Number(x||0).toLocaleString('fa-IR');
-  const isoToday=()=>typeof window.today==='function'?window.today():new Date().toISOString().slice(0,10);
-  const fa=x=>typeof window.faDate==='function'?window.faDate(x,false):x||'-';
-  const D=()=>typeof d!=='undefined'&&d?d:(window.d||{c:[],a:[],p:[]});
-  const DB=()=>typeof sb!=='undefined'&&sb?sb:window.sb;
-  const USER=()=>typeof currentUser!=='undefined'?currentUser:window.currentUser;
-  const arrA=()=>Array.isArray(D().a)?D().a:[];
-  const arrP=()=>Array.isArray(D().p)?D().p:[];
-  const cname=id=>typeof window.cname==='function'?window.cname(id):((D().c||[]).find(c=>String(c.id)===String(id))?.n||'بدون نام');
-  const paidFor=id=>arrP().filter(p=>String(p.appointmentId||'')===String(id)).reduce((s,p)=>s+Number(p.m||0),0);
-  const paidAmount=a=>Math.max(Number(a?.paid||0),paidFor(a?.id));
-  const remaining=a=>Math.max(0,Number(a?.m||0)-paidAmount(a));
-  const clientTotal=id=>arrA().filter(a=>String(a.c)===String(id)&&a.status!=='cancelled').reduce((s,a)=>s+Number(a.m||0),0);
-  const clientPaid=id=>arrP().filter(p=>String(p.c)===String(id)).reduce((s,p)=>s+Number(p.m||0),0);
-  const clientDebt=id=>Math.max(0,clientTotal(id)-clientPaid(id));
-
-  function rerender(){
-    try{ if(typeof window.render==='function') window.render(); }catch(e){ console.error(e); }
-    setTimeout(()=>{try{renderReportsFix();renderPaymentCenter();}catch(e){console.error(e)}},60);
-  }
-
-  // --- Appointment actions: real DB write + local UI refresh ---
-  window.setStatus=async function(id,status){
-    const a=arrA().find(x=>String(x.id)===String(id));
-    if(!a){alert('نوبت پیدا نشد.');return false;}
-    if(!USER()){alert('ابتدا وارد پنل مدیریت شوید.');return false;}
-    const {data,error}=await DB().from('appointments').update({status}).eq('id',id).select('id,status').maybeSingle();
-    if(error){alert('تغییر وضعیت ناموفق بود: '+error.message);return false;}
-    if(!data){alert('تغییر انجام نشد؛ این نوبت از دسترس حساب فعلی خارج است.');return false;}
-    a.status=data.status;
-    rerender();
-    return true;
-  };
-
-  window.delAppt=async function(id){
-    const a=arrA().find(x=>String(x.id)===String(id));
-    if(!a){alert('نوبت پیدا نشد.');return false;}
-    if(!confirm('این نوبت حذف شود؟'))return false;
-    if(!USER()){alert('ابتدا وارد پنل مدیریت شوید.');return false;}
-
-    // Remove dependent records first so the appointment can actually be deleted.
-    for(const table of ['payments','session_notes','reminders']){
-      const {error}=await DB().from(table).delete().eq('appointment_id',id);
-      if(error){alert('حذف نوبت ناموفق بود ('+table+'): '+error.message);return false;}
-    }
-    const {data,error}=await DB().from('appointments').delete().eq('id',id).select('id').maybeSingle();
-    if(error){alert('حذف نوبت ناموفق بود: '+error.message);return false;}
-    if(!data){alert('حذف انجام نشد؛ این نوبت از دسترس حساب فعلی خارج است.');return false;}
-    D().a=arrA().filter(x=>String(x.id)!==String(id));
-    D().p=arrP().filter(x=>String(x.appointmentId||'')!==String(id));
-    rerender();
-    return true;
-  };
-
-  window.tanaraPayAppt=function(id){
-    const a=arrA().find(x=>String(x.id)===String(id));
-    if(!a){alert('نوبت پیدا نشد.');return false;}
-    if(typeof window.showPageById==='function') window.showPageById('pay');
-    setTimeout(()=>{
-      const pc=$('pc'), sel=$('paymentAppointment'), pa=$('pa');
-      if(pc){pc.value=String(a.c);pc.dispatchEvent(new Event('change',{bubbles:true}));}
-      if(typeof window.paymentAppointmentOptions==='function')window.paymentAppointmentOptions();
-      if(sel){sel.value=String(a.id);}
-      if(typeof window.tanaraFillPayAmount==='function')window.tanaraFillPayAmount();
-      else if(pa)pa.value=String(remaining(a));
-      $('pc')?.scrollIntoView({behavior:'smooth',block:'center'});
-    },80);
-    return true;
-  };
-
-  // Capture appointment action buttons so an old inline handler cannot swallow the click.
-  document.addEventListener('click',function(ev){
-    const btn=ev.target.closest('#alist .actions button');
-    if(!btn)return;
-    const txt=(btn.textContent||'').trim();
-    if(!['تأیید','انجام شد','ثبت پرداخت','حذف'].includes(txt))return;
-    const raw=btn.getAttribute('onclick')||'';
-    const m=raw.match(/(?:setStatus|tanaraPayAppt|delAppt)\((['"]?)([^,'")]+)\1/);
-    if(!m)return;
-    ev.preventDefault();ev.stopImmediatePropagation();
-    const id=m[2];
-    if(txt==='تأیید')window.setStatus(id,'confirmed');
-    else if(txt==='انجام شد')window.setStatus(id,'done');
-    else if(txt==='ثبت پرداخت')window.tanaraPayAppt(id);
-    else window.delAppt(id);
-  },true);
-
-  // --- Payment center: paid/unpaid, grouped by day ---
-  function paymentStatus(a, allocation){
-    const p=allocation?.get(String(a.id))||0;
-    return Number(a.m||0)>0 && p>=Number(a.m||0) ? 'paid' : 'unpaid';
-  }
-
-  function buildUnpaid(){
-    // Allocate client-level payments without appointment_id to the client's oldest appointments first.
-    const clients=new Map();
-    for(const a of arrA().filter(a=>a.status!=='cancelled'&&Number(a.m||0)>0).sort((x,y)=>(x.date+x.time).localeCompare(y.date+y.time))){
-      if(!clients.has(String(a.c)))clients.set(String(a.c),[]);
-      clients.get(String(a.c)).push(a);
-    }
-    const alloc=new Map();
-    for(const [cid,aps] of clients){
-      let linked=0;
-      aps.forEach(a=>{const v=paidFor(a.id);alloc.set(String(a.id),v);linked+=v});
-      let free=Math.max(0,clientPaid(cid)-linked);
-      for(const a of aps){
-        if(free<=0)break;
-        const need=Math.max(0,Number(a.m||0)-(alloc.get(String(a.id))||0));
-        const take=Math.min(need,free);alloc.set(String(a.id),(alloc.get(String(a.id))||0)+take);free-=take;
-      }
-    }
-    return {rows:arrA().filter(a=>a.status!=='cancelled'&&Number(a.m||0)>0&&paymentStatus(a,alloc)==='unpaid').sort((x,y)=>(x.date+x.time).localeCompare(y.date+y.time)),alloc};
-  }
-
-  function dayGroups(rows){
-    const groups={};
-    rows.forEach(a=>(groups[a.date]??=[]).push(a));
-    return Object.entries(groups).sort((a,b)=>a[0].localeCompare(b[0]));
-  }
-
-  function renderPaymentCenter(){
-    const box=$('plist'); if(!box)return;
-    const oldTab=box.dataset.tab||'unpaid';
-    const paid=arrP().slice().sort((a,b)=>(String(a.date)+String(a.time||'')).localeCompare(String(b.date)+String(b.time||'')));
-    const unpaidData=buildUnpaid();
-    const unpaid=unpaidData.rows;
-    const rows=oldTab==='paid'?paid:unpaid;
-
-    let html='<div class="payment-center">'+
-      '<div class="notif-tabs">'+
-      '<button type="button" data-paytab="unpaid" class="'+(oldTab==='unpaid'?'active':'')+'">پرداخت‌نشده‌ها <span class="notif-count">'+M(unpaid.length)+'</span></button>'+
-      '<button type="button" data-paytab="paid" class="'+(oldTab==='paid'?'active':'')+'">پرداخت‌شده‌ها <span class="notif-count">'+M(paid.length)+'</span></button>'+
-      '</div>';
-
-    if(oldTab==='paid'){
-      const groups={};
-      paid.forEach(p=>(groups[p.date]??=[]).push(p));
-      html+=Object.entries(groups).sort((a,b)=>b[0].localeCompare(a[0])).map(([date,ps])=>
-        '<div class="panel"><div class="section-title"><h4>'+E(fa(date))+'</h4><span class="badge ok">'+M(ps.reduce((s,p)=>s+Number(p.m||0),0))+' تومان</span></div>'+ps.map(p=>
-          '<div class="item"><div class="client-head"><div><b>'+E(cname(p.c))+'</b><br><span class="muted">'+E(p.method||'نقدی')+(p.time?' · '+E(p.time):'')+'</span></div><b>'+M(p.m)+' تومان</b></div></div>'
-        ).join('')+'</div>'
-      ).join('')||'<div class="item empty">پرداختی ثبت نشده است.</div>';
-    }else{
-      html+=dayGroups(unpaid).map(([date,aps])=>
-        '<div class="panel"><div class="section-title"><h4>'+E(fa(date))+'</h4><span class="badge warn">'+M(aps.length)+' نوبت پرداخت‌نشده</span></div>'+aps.map(a=>{
-          const paidHere=unpaidData.alloc.get(String(a.id))||0, due=Math.max(0,Number(a.m||0)-paidHere);
-          return '<div class="item"><div class="client-head"><div><b>'+E(a.time||'—')+' — '+E(cname(a.c))+'</b><br><span class="muted">'+E(a.s||'')+'</span></div><span class="badge cancel">باقی‌مانده '+M(due)+' تومان</span></div><div class="muted" style="margin-top:5px">مبلغ نوبت: '+M(a.m)+' تومان'+(paidHere?' · پرداخت: '+M(paidHere)+' تومان':'')+'</div></div>';
-        }).join('')+'</div>'
-      ).join('')||'<div class="item empty">همه نوبت‌های دارای مبلغ پرداخت شده‌اند.</div>';
-    }
-    html+='</div>';
-    box.innerHTML=html;
-    box.dataset.tab=oldTab;
-    box.querySelectorAll('[data-paytab]').forEach(b=>b.onclick=()=>{box.dataset.tab=b.dataset.paytab;renderPaymentCenter()});
-  }
-
-  // --- Reports cards: clicking opens the requested people/details ---
-  function detailPanel(){
-    let x=$('reportMoneyDetail');
-    if(!x){x=document.createElement('div');x.id='reportMoneyDetail';x.className='panel';const reports=$('reports');if(reports)reports.insertBefore(x,reports.querySelector('.grid2'));}
-    return x;
-  }
-  function closeReportDetail(){ $('reportMoneyDetail')?.remove(); }
-  window.closeReportDetail=closeReportDetail;
-
-  function renderMonthIncomeDetail(){
-    const ym=isoToday().slice(0,7);
-    const ps=arrP().filter(p=>String(p.date||'').slice(0,7)===ym).sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
-    const byDay={};ps.forEach(p=>(byDay[p.date]??=[]).push(p));
-    const x=detailPanel();
-    x.innerHTML='<div class="section-title"><h3>ریز درآمد این ماه</h3><button class="smallbtn" onclick="closeReportDetail()">بستن</button></div>'+
-      '<div class="notice">مجموع درآمد این ماه: <b>'+M(ps.reduce((s,p)=>s+Number(p.m||0),0))+' تومان</b></div>'+
-      Object.entries(byDay).sort((a,b)=>b[0].localeCompare(a[0])).map(([date,rows])=>'<div class="item"><b>'+E(fa(date))+'</b>'+rows.map(p=>'<div style="padding:7px 0;border-top:1px solid #edf3f1"><b>'+E(cname(p.c))+'</b> — '+M(p.m)+' تومان</div>').join('')+'</div>').join('')+
-      (ps.length?'':'<div class="item empty">در این ماه پرداختی ثبت نشده است.</div>');
+  if(window.__tanaraPaymentDebtCardsFix)return;
+  window.__tanaraPaymentDebtCardsFix=true;
+  const E=x=>typeof esc==='function'?esc(String(x??'')):String(x??'');
+  const M=x=>typeof money==='function'?money(Number(x||0)):Number(x||0).toLocaleString('fa-IR');
+  const todayIso=()=>typeof today==='function'?today():new Date().toISOString().slice(0,10);
+  const cname2=id=>typeof cname==='function'?cname(id):((d.c||[]).find(c=>String(c.id)===String(id))?.n||'بدون نام');
+  const debt2=id=>{const aps=(d.a||[]).filter(a=>String(a.c)===String(id)&&a.status!=='cancelled');const total=aps.reduce((n,a)=>n+Number(a.m||0),0);const paid=(d.p||[]).filter(x=>String(x.c)===String(id)).reduce((n,x)=>n+Number(x.m||0),0);return Math.max(0,total-paid)};
+  function panel(){let x=document.getElementById('homeMoneyDetail');if(!x){x=document.createElement('div');x.id='homeMoneyDetail';x.className='panel';const cards=document.querySelector('.cards');if(cards&&cards.parentNode)cards.parentNode.insertBefore(x,cards.nextSibling)}return x}
+  function showReceived(){
+    const date=todayIso(), ps=(d.p||[]).filter(p=>p.date===date).sort((a,b)=>String(b.time||'').localeCompare(String(a.time||'')));
+    const total=ps.reduce((n,p)=>n+Number(p.m||0),0), x=panel();
+    x.innerHTML='<div class="section-title"><h3>دریافتی‌های امروز</h3><button class="smallbtn" onclick="document.getElementById(\'homeMoneyDetail\').remove()">بستن</button></div>'+
+      '<div class="notice">مجموع دریافتی امروز: <b>'+M(total)+' تومان</b></div>'+
+      (ps.map(p=>{const a=(d.a||[]).find(a=>String(a.id)===String(p.appointmentId||''));return '<div class="item"><b>'+E(cname2(p.c))+'</b><br>'+M(p.m)+' تومان · '+E(p.method||'')+' · '+E(p.time||'—')+(a?'<br><span class="muted">'+E(a.s)+' · ساعت نوبت '+E(a.time)+'</span>':'')+'</div>'}).join('')||'<div class="item empty">امروز دریافتی ثبت نشده است.</div>');
     x.scrollIntoView({behavior:'smooth',block:'start'});
   }
-  function renderDebtDetail(){
-    const rows=(D().c||[]).map(c=>({c,debt:clientDebt(c.id)})).filter(x=>x.debt>0).sort((a,b)=>b.debt-a.debt);
-    const x=detailPanel();
-    x.innerHTML='<div class="section-title"><h3>مراجعین بدهکار</h3><button class="smallbtn" onclick="closeReportDetail()">بستن</button></div>'+
-      '<div class="notice">مجموع بدهی: <b>'+M(rows.reduce((s,x)=>s+x.debt,0))+' تومان</b> · تعداد بدهکار: <b>'+M(rows.length)+'</b></div>'+
-      (rows.map(x=>'<div class="item" style="cursor:pointer" data-client="'+E(x.c.id)+'"><div class="client-head"><div><b>'+E(x.c.n)+'</b><br><span class="muted">'+E(x.c.p||'بدون شماره')+'</span></div><span class="badge warn">بدهی '+M(x.debt)+' تومان</span></div></div>').join('')||'<div class="item empty">هیچ مراجعه‌کننده بدهکاری وجود ندارد.</div>');
-    x.querySelectorAll('[data-client]').forEach(el=>el.onclick=()=>{if(typeof window.clientHistory==='function')window.clientHistory(el.dataset.client)});
+  function showDebts(){
+    const rows=(d.c||[]).map(c=>({c,debt:debt2(c.id)})).filter(x=>x.debt>0).sort((a,b)=>b.debt-a.debt), total=rows.reduce((n,x)=>n+x.debt,0), x=panel();
+    x.innerHTML='<div class="section-title"><h3>مراجعین بدهکار</h3><button class="smallbtn" onclick="document.getElementById(\'homeMoneyDetail\').remove()">بستن</button></div>'+
+      '<div class="notice">مجموع بدهی: <b>'+M(total)+' تومان</b> · تعداد بدهکار: <b>'+M(rows.length)+'</b></div>'+
+      (rows.map(x=>'<div class="item" onclick="show(\'clients\',document.querySelector(\'nav button:nth-child(3)\'));setTimeout(()=>clientHistory('+JSON.stringify(x.c.id)+'),100)" style="cursor:pointer"><b>'+E(x.c.n)+'</b><br><span class="muted">'+E(x.c.p||'بدون شماره')+'</span><br><span class="badge warn">بدهی '+M(x.debt)+' تومان</span></div>').join('')||'<div class="item empty">هیچ مراجعه‌کننده بدهکاری وجود ندارد.</div>');
     x.scrollIntoView({behavior:'smooth',block:'start'});
   }
-  function renderTodayIncomeDetail(){
-    const date=isoToday(), ps=arrP().filter(p=>String(p.date||'')===date);
-    const x=detailPanel();
-    x.innerHTML='<div class="section-title"><h3>درآمد امروز</h3><button class="smallbtn" onclick="closeReportDetail()">بستن</button></div>'+
-      '<div class="notice">مجموع دریافتی امروز: <b>'+M(ps.reduce((s,p)=>s+Number(p.m||0),0))+' تومان</b></div>'+
-      (ps.map(p=>'<div class="item"><b>'+E(cname(p.c))+'</b> — '+M(p.m)+' تومان</div>').join('')||'<div class="item empty">امروز پرداختی ثبت نشده است.</div>');
-    x.scrollIntoView({behavior:'smooth',block:'start'});
+  function wire(){
+    const cards=document.querySelectorAll('#home .cards .card'); if(cards.length<4)return;
+    cards[2].style.cursor='pointer';cards[2].title='مشاهده دریافتی‌های امروز';cards[2].onclick=showReceived;
+    cards[3].style.cursor='pointer';cards[3].title='مشاهده مراجعین بدهکار';cards[3].onclick=showDebts;
   }
-  function renderSessionsDetail(){
-    const ym=isoToday().slice(0,7), rows=arrA().filter(a=>String(a.date||'').slice(0,7)===ym&&a.status!=='cancelled').sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
-    const x=detailPanel();x.innerHTML='<div class="section-title"><h3>جلسات این ماه</h3><button class="smallbtn" onclick="closeReportDetail()">بستن</button></div>'+
-      (rows.map(a=>'<div class="item"><b>'+E(fa(a.date))+' — '+E(a.time||'')+'</b><br>'+E(cname(a.c))+' · '+E(a.s||'')+' · '+M(a.m)+' تومان</div>').join('')||'<div class="item empty">جلسه‌ای ثبت نشده است.</div>');
-    x.scrollIntoView({behavior:'smooth',block:'start'});
-  }
-  function renderReportsFix(){
-    const page=$('reports');if(!page)return;
-    const cards=page.querySelectorAll('.cards .card');if(cards.length<4)return;
-    const handlers=[renderTodayIncomeDetail,renderMonthIncomeDetail,renderSessionsDetail,renderDebtDetail];
-    cards.forEach((c,i)=>{c.style.cursor='pointer';c.onclick=handlers[i]});
-  }
-
-  // Ensure paid_amount is available in the local appointment object.
-  function patchLoadCloud(){
-    // Existing loadCloud maps appointments into d.a. We refresh the local paid value from the DB after every load.
-    if(window.__tanaraPaidAmountLoader)return;
-    window.__tanaraPaidAmountLoader=true;
-    const old=window.loadCloud;
-    if(typeof old!=='function')return;
-    window.loadCloud=async function(){
-      const r=await old.apply(this,arguments);
-      try{arrA().forEach(a=>{if(a.paid==null)a.paid=paidFor(a.id)});}catch(e){}
-      return r;
-    };
-  }
-
-  function install(){
-    patchLoadCloud();
-    renderReportsFix();
-    renderPaymentCenter();
-    // Reapply after the app's render/show functions rebuild sections.
-    const oldRender=window.render;
-    if(oldRender && !window.__tanaraRenderWrapped20260927){
-      window.__tanaraRenderWrapped20260927=true;
-      window.render=function(){const r=oldRender.apply(this,arguments);setTimeout(()=>{renderReportsFix();renderPaymentCenter()},0);return r;};
-    }
-    setTimeout(()=>{renderReportsFix();renderPaymentCenter()},200);
-    setTimeout(()=>{renderReportsFix();renderPaymentCenter()},900);
-  }
-
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(install,50),{once:true});
-  else setTimeout(install,50);
-  window.tanaraRenderPaymentCenter=renderPaymentCenter;
-  window.tanaraRenderReports=renderReportsFix;
+  const old=window.render; if(old)window.render=function(){old.apply(this,arguments);try{wire()}catch(e){}};
+  setTimeout(wire,900);
 })();
-
 </script>
-</body></html>
+\n<script id="tanara-notification-folders">
+(function(){
+  const KEY='tanara_booking_read_ids_v1';
+  let folder=localStorage.getItem('tanara_booking_folder')||'unread';
+  function readIds(){try{return new Set(JSON.parse(localStorage.getItem(KEY)||'[]').map(String))}catch(_){return new Set()}}
+  function saveIds(set){localStorage.setItem(KEY,JSON.stringify([...set]))}
+  function notifId(a){return String(a.id||((a.created||'')+'_'+(a.c||'')+'_'+(a.date||'')+'_'+(a.time||'')))}
+  function arr(){return typeof bookingNotifications==='function'?bookingNotifications():[...(d.a||[])].filter(a=>a.source==='public').sort((x,y)=>String(y.created||'').localeCompare(String(x.created||'')))}
+  window.showNotificationFolder=function(x){folder=x==='read'?'read':'unread';localStorage.setItem('tanara_booking_folder',folder);renderFolders()}
+  window.markBookingNotificationRead=function(id){const s=readIds();s.add(String(id));saveIds(s);renderFolders();}
+  window.markBookingNotificationUnread=function(id){const s=readIds();s.delete(String(id));saveIds(s);renderFolders();}
+  window.markAllBookingNotificationsRead=function(){const s=readIds();arr().forEach(a=>s.add(notifId(a)));saveIds(s);renderFolders();}
+  function renderFolders(){
+    const all=arr(), ids=readIds();
+    const unread=all.filter(a=>!ids.has(notifId(a))), read=all.filter(a=>ids.has(notifId(a)));
+    const list=folder==='read'?read:unread;
+    const box=document.getElementById('bookingNotifications'); if(!box)return;
+    const uc=document.getElementById('notifUnreadCount'),rc=document.getElementById('notifReadCount');
+    if(uc)uc.textContent='('+unread.length+')'; if(rc)rc.textContent='('+read.length+')';
+    document.getElementById('notifTabUnread')?.classList.toggle('active',folder==='unread');
+    document.getElementById('notifTabRead')?.classList.toggle('active',folder==='read');
+    if(!list.length){box.innerHTML='<div class="notif-empty">'+(folder==='read'?'هنوز اعلان خوانده‌شده‌ای ندارید.':'اعلان نخوانده‌ای ندارید.')+'</div>';return}
+    box.innerHTML=list.map(a=>{
+      const id=notifId(a), isRead=ids.has(id);
+      return '<div class="item new-booking '+(isRead?'notif-read':'notif-unread')+'">'+
+        '<div class="booking-title">🔔 رزرو جدید — '+esc(cname(a.c))+'</div>'+
+        '<div>'+esc(a.s)+' · '+faDate(a.date,true)+' · ساعت '+esc(a.time)+'</div>'+
+        '<div class="muted2">'+(a.created?new Date(a.created).toLocaleString('fa-IR'):'')+'</div>'+
+        '<div class="actions">'+
+        (isRead?'<button type="button" class="smallbtn notif-unread-btn" onclick="markBookingNotificationUnread('+JSON.stringify(id)+')">↩️ نخوانده</button>':'<button type="button" class="smallbtn notif-read-btn" onclick="markBookingNotificationRead('+JSON.stringify(id)+')">✓ خواندم</button>')+
+        '</div></div>';
+    }).join('');
+    const badge=document.getElementById('notifBadge'); if(badge){badge.textContent=money(unread.length);badge.style.display=unread.length?'inline-flex':'none'}
+  }
+  const oldRefresh=window.refreshBookingNotifications;
+  window.refreshBookingNotifications=function(silent){renderFolders();};
+  const oldMark=window.markBookingNotificationsRead;
+  window.markBookingNotificationsRead=window.markAllBookingNotificationsRead;
+  setTimeout(renderFolders,900);
+})();
+</script>\n</body></html>
