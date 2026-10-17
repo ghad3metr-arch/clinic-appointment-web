@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#1f6f5b">
-<title>Tanara v10 — تن‌آرا | مدیریت مرکز ماساژ</title>
+<title>تن‌آرا | مدیریت مرکز ماساژ</title>
 <style>
 :root{--g:#1f6f5b;--g2:#2f8b72;--bg:#f4f7f5;--ink:#18352d;--muted:#6a7772;--danger:#b33;--card:#fff;--line:#d9e3df;--warn:#fff3c4;--ok:#dff4e8;--blue:#e7f0ff}
 *{box-sizing:border-box}body{font-family:Tahoma,Arial,sans-serif;margin:0;background:var(--bg);color:var(--ink);line-height:1.7}
@@ -100,7 +100,7 @@ main{margin-left:150px;max-width:none;padding:0 18px 35px}.page{max-width:1100px
 <div id="serviceDuration" class="notice" style="margin-top:0">مدت خدمت: —</div>
 <div class="grid2"><input id="amount" type="number" placeholder="قیمت کل (تومان)"><select id="reminder"><option value="0">بدون یادآوری</option><option value="1440">۱ روز قبل</option><option value="720">۱۲ ساعت قبل</option><option value="120">۲ ساعت قبل</option><option value="60">۱ ساعت قبل</option><option value="30">۳۰ دقیقه قبل</option></select></div>
 <select id="status"><option value="scheduled">رزرو شده</option><option value="confirmed">تأیید شده</option></select><button class="primary">ثبت نوبت</button></form>
-<div class="notice">🔔 برای یادآوری خودکار داخل برنامه، اعلان‌ها را در تنظیمات فعال کن. برای یادآوری حتی وقتی برنامه بسته است، مرحله بعدی اتصال به سرویس اعلان/سرور است.</div>
+<div class="notice">🔔 اگر برای نوبت یادآوری انتخاب کنی، سرور در زمان مقرر اعلان گوشی می‌فرستد؛ برای دریافت، اعلان‌های گوشی را از بخش تنظیمات فعال کن.</div>
 <div class="section-title"><h3>فهرست نوبت‌ها</h3><select id="apptFilter" onchange="renderAppts()" style="max-width:180px"><option value="all">همه</option><option value="today">امروز</option><option value="upcoming">پیش‌رو</option><option value="done">انجام شده</option><option value="cancelled">لغو شده</option></select></div><div id="alist"></div>
 </section>
 
@@ -158,8 +158,8 @@ async function logoutCloud(){if(bookingNotificationTimer)clearInterval(bookingNo
 async function loadCloud(){
   if(!currentUser)return;
   const [cs,aps,ps,sv,av]=await Promise.all([
-    sb.from('clients').select('id,full_name,phone,notes,job,birth_date,created_at').order('created_at'),
-    sb.from('appointments').select('id,client_id,service_id,appointment_date,start_time,status,price,paid_amount,notes,created_at,booking_source').order('appointment_date').order('start_time'),
+    sb.from('clients').select('id,full_name,phone,notes,job,occupation,birth_date,created_at').order('created_at'),
+    sb.from('appointments').select('id,client_id,service_id,appointment_date,start_time,status,price,paid_amount,notes,created_at,booking_source,reminder_minutes,reminder_sent_at,reminder_attempts').order('appointment_date').order('start_time'),
     sb.from('payments').select('id,client_id,appointment_id,amount,payment_method,payment_date,notes,created_at').order('payment_date'),
     sb.from('services').select('id,name,duration_minutes,price,active').eq('active',true).order('created_at'),
     sb.from('availability_slots').select('id,slot_date,start_time,end_time,min_booking_days,active,created_at').eq('active',true).order('slot_date').order('start_time')
@@ -167,9 +167,9 @@ async function loadCloud(){
   const err=[cs,aps,ps,sv].find(x=>x.error)?.error; if(err){alert('دریافت اطلاعات از سرور ناموفق بود: '+err.message);return}
   services=sv.data||[];
   availability=(av?.data||[]).map(x=>({id:x.id,date:x.slot_date,start:(x.start_time||'').slice(0,5),end:(x.end_time||'').slice(0,5),minDays:Number(x.min_booking_days||0),active:x.active!==false,created:x.created_at}));
-  d.c=(cs.data||[]).map(x=>({id:x.id,n:x.full_name,p:x.phone||'',notes:x.notes||'',job:x.job||'',birthDate:x.birth_date||'',created:x.created_at}));
+  d.c=(cs.data||[]).map(x=>({id:x.id,n:x.full_name,p:x.phone||'',notes:x.notes||'',job:x.job||x.occupation||'',birthDate:x.birth_date||'',created:x.created_at}));
   const sm=new Map(services.map(x=>[x.id,x.name]));
-  d.a=(aps.data||[]).map(x=>({id:x.id,c:x.client_id,date:x.appointment_date,time:(x.start_time||'').slice(0,5),s:sm.get(x.service_id)||'خدمت حذف‌شده',serviceId:x.service_id,m:Number(x.price||0),rem:0,status:x.status||'scheduled',reminded:false,created:x.created_at||'',source:x.booking_source||'admin'}));
+  d.a=(aps.data||[]).map(x=>({id:x.id,c:x.client_id,date:x.appointment_date,time:(x.start_time||'').slice(0,5),s:sm.get(x.service_id)||'خدمت حذف‌شده',serviceId:x.service_id,m:Number(x.price||0),rem:Number(x.reminder_minutes||0),reminderSentAt:x.reminder_sent_at||null,reminderAttempts:Number(x.reminder_attempts||0),status:x.status||'scheduled',reminded:!!x.reminder_sent_at,created:x.created_at||'',source:x.booking_source||'admin'}));
   d.p=(ps.data||[]).map(x=>({id:x.id,c:x.client_id,m:Number(x.amount||0),date:x.payment_date,method:x.payment_method||'cash',appointmentId:x.appointment_id}));
   localStorage.setItem(KEY,JSON.stringify(d));
   fillServices();
@@ -198,10 +198,10 @@ function cname(id){let x=d.c.find(c=>String(c.id)===String(id));return x?x.n:'-'
 function normalizeJalaliText(v){return String(v||'').trim().replace(/[۰-۹]/g,d=>String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d))).replace(/[٠-٩]/g,d=>String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/-/g,'/').replace(/\s/g,'')}
 function validJalaliDateText(v){let m=normalizeJalaliText(v).match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/);if(!m)return false;let y=+m[1],mo=+m[2],d=+m[3];return mo>=1&&mo<=12&&d>=1&&d<=(mo<=6?31:mo<=11?30:(isLeapJ(y)?30:29))}
 function jalaliBirthToIso(v){if(!v)return null;if(!validJalaliDateText(v))return undefined;let [y,m,d]=normalizeJalaliText(v).split('/').map(Number);return jToIso(y,m,d)}
-async function addClient(e){e.preventDefault();if(!currentUser)return;const birth=jalaliBirthToIso($('birthDate').value);if(birth===undefined){alert('تاریخ تولد را به شکل شمسی سال/ماه/روز وارد کن.');return}const row={owner_id:currentUser.id,full_name:$('name').value.trim(),phone:$('phone').value.trim(),notes:$('notes').value.trim(),job:$('job').value.trim(),birth_date:birth};const {data,error}=await sb.from('clients').insert(row).select('id,full_name,phone,notes,job,birth_date,created_at').single();if(error){alert('ثبت مراجع ناموفق بود: '+error.message+'\nاگر ستون‌های شغل و تاریخ تولد را هنوز اضافه نکرده‌ای، فایل SQL داخل زیپ را در Supabase اجرا کن.');return}d.c.push({id:data.id,n:data.full_name,p:data.phone||'',notes:data.notes||'',job:data.job||'',birthDate:data.birth_date||'',created:data.created_at});e.target.reset();save();alert('مراجع با شغل و تاریخ تولد ثبت شد')}
+async function addClient(e){e.preventDefault();if(!currentUser)return;const birth=jalaliBirthToIso($('birthDate').value);if(birth===undefined){alert('تاریخ تولد را به شکل شمسی سال/ماه/روز وارد کن.');return}const row={owner_id:currentUser.id,full_name:$('name').value.trim(),phone:$('phone').value.trim(),notes:$('notes').value.trim(),job:$('job').value.trim(),birth_date:birth};const {data,error}=await sb.from('clients').insert(row).select('id,full_name,phone,notes,job,occupation,birth_date,created_at').single();if(error){alert('ثبت مراجع ناموفق بود: '+error.message+'\nاگر ستون‌های شغل و تاریخ تولد را هنوز اضافه نکرده‌ای، فایل SQL داخل زیپ را در Supabase اجرا کن.');return}d.c.push({id:data.id,n:data.full_name,p:data.phone||'',notes:data.notes||'',job:data.job||'',birthDate:data.birth_date||'',created:data.created_at});e.target.reset();save();alert('مراجع با شغل و تاریخ تولد ثبت شد')}
 
 function focusClientForm(){showPageById('clients');setTimeout(()=>$('name').focus(),50)}
-async function addAppt(e){e.preventDefault();if(!currentUser)return;const serviceId=$('service').value,sv=services.find(x=>x.id===serviceId);const row={owner_id:currentUser.id,client_id:$('ac').value,service_id:serviceId||null,appointment_date:$('date').value,start_time:$('time').value,status:$('status').value,price:Number($('amount').value||sv?.price||0),paid_amount:0,notes:''};const {data,error}=await sb.from('appointments').insert(row).select('id,client_id,service_id,appointment_date,start_time,status,price,created_at,booking_source').single();if(error){alert('ثبت نوبت ناموفق بود: '+error.message);return}d.a.push({id:data.id,c:data.client_id,date:data.appointment_date,time:(data.start_time||'').slice(0,5),s:sv?.name||'',serviceId:data.service_id,m:Number(data.price||0),rem:Number($('reminder').value||0),status:data.status,reminded:false,created:data.created_at||new Date().toISOString(),source:'admin'});save();alert('نوبت ثبت شد');}
+async function addAppt(e){e.preventDefault();if(!currentUser)return;const serviceId=$('service').value,sv=services.find(x=>x.id===serviceId);const reminderMinutes=Number($('reminder').value||0);const row={owner_id:currentUser.id,client_id:$('ac').value,service_id:serviceId||null,appointment_date:$('date').value,start_time:$('time').value,status:$('status').value,price:Number($('amount').value||sv?.price||0),paid_amount:0,notes:'',reminder_minutes:reminderMinutes};const {data,error}=await sb.from('appointments').insert(row).select('id,client_id,service_id,appointment_date,start_time,status,price,created_at,booking_source,reminder_minutes,reminder_sent_at,reminder_attempts').single();if(error){alert('ثبت نوبت ناموفق بود: '+error.message);return}d.a.push({id:data.id,c:data.client_id,date:data.appointment_date,time:(data.start_time||'').slice(0,5),s:sv?.name||'',serviceId:data.service_id,m:Number(data.price||0),rem:Number(data.reminder_minutes||0),reminderSentAt:data.reminder_sent_at||null,reminderAttempts:Number(data.reminder_attempts||0),status:data.status,reminded:!!data.reminder_sent_at,created:data.created_at||new Date().toISOString(),source:'admin'});save();alert(reminderMinutes?'نوبت ثبت شد؛ یادآوری سروری برای آن فعال شد.':'نوبت ثبت شد');}
 async function addPay(e){e.preventDefault();if(!currentUser)return;const row={owner_id:currentUser.id,client_id:$('pc').value,amount:Number($('pa').value||0),payment_method:$('payMethod').value,payment_date:$('pd').value};const {data,error}=await sb.from('payments').insert(row).select('id,client_id,amount,payment_method,payment_date,appointment_id').single();if(error){alert('ثبت پرداخت ناموفق بود: '+error.message);return}d.p.push({id:data.id,c:data.client_id,m:Number(data.amount||0),date:data.payment_date,method:data.payment_method,appointmentId:data.appointment_id});e.target.reset();setupPaymentJalali(today());save();alert('پرداخت ثبت شد')}
 function statusLabel(s){return s==='confirmed'?'تأیید شده':s==='done'?'انجام شد':s==='cancelled'?'لغو شده':'رزرو شده'}
 async function setStatus(id,status){let a=d.a.find(x=>x.id===id);if(!a)return;const {error}=await sb.from('appointments').update({status}).eq('id',id);if(error){alert('تغییر وضعیت ناموفق بود: '+error.message);return}a.status=status;save()}
@@ -256,7 +256,7 @@ async function enablePushNotifications(){
 function requestNotifications(){enablePushNotifications()}
 function updateNotifState(){if(!$('notifState'))return;$('notifState').textContent=('Notification' in window)?(Notification.permission==='granted'?'اعلان فعال است':Notification.permission==='denied'?'اعلان مسدود است':'اعلان فعال نشده'):'پشتیبانی نمی‌شود'}
 function notifyUpcoming(a){let msg=`یادآوری نوبت: ${cname(a.c)} — ${a.s}\n${faDateTime(a.date,a.time)}`;if('Notification' in window&&Notification.permission==='granted')new Notification('تن‌آرا',{body:msg});else alert(msg);a.reminded=true;localStorage.setItem(KEY,JSON.stringify(d))}
-function checkReminders(){let now=Date.now();d.a.forEach(a=>{if(a.status==='cancelled'||!a.rem||a.reminded)return;let t=new Date(a.date+'T'+a.time+':00').getTime();if(t-now<=a.rem*60000&&t-now>=-10*60000)notifyUpcoming(a)})}
+function checkReminders(){/* Appointment reminders are sent by the Supabase server scheduler, even when this page is closed. */}
 async function addAvailability(e){e.preventDefault();if(!currentUser)return;const date=$('avdate').value,start=$('avstart').value,end=$('avend').value,minDays=Number($('avnotice').value||0);if(!date||!start||!end){alert('تاریخ و ساعت را کامل کن.');return}if(end<=start){alert('ساعت پایان باید بعد از ساعت شروع باشد.');return}const {data,error}=await sb.from('availability_slots').insert({owner_id:currentUser.id,slot_date:date,start_time:start,end_time:end,min_booking_days:minDays,active:true}).select('id,slot_date,start_time,end_time,min_booking_days,active,created_at').single();if(error){alert('ثبت زمان آزاد ناموفق بود: '+error.message);return}availability.push({id:data.id,date:data.slot_date,start:(data.start_time||'').slice(0,5),end:(data.end_time||'').slice(0,5),minDays:Number(data.min_booking_days||0),active:data.active!==false,created:data.created_at});renderAvailability();alert('زمان آزاد ثبت شد');}
 async function delAvailability(id){if(!confirm('این زمان آزاد حذف شود؟'))return;const {error}=await sb.from('availability_slots').delete().eq('id',id);if(error){alert('حذف ناموفق بود: '+error.message);return}availability=availability.filter(x=>x.id!==id);renderAvailability()}
 function clearOldAvailability(){renderAvailability(true)}
@@ -265,7 +265,7 @@ function setupAvailabilityJalali(iso){let [y,m,da]=isoToJ(iso);$('avy').innerHTM
 function updateAvailabilityJDays(selected){let y=Number($('avy').value),m=Number($('avm').value),max=daysInJ(y,m);$('avd').innerHTML='';for(let i=1;i<=max;i++)$('avd').insertAdjacentHTML('beforeend',`<option value="${i}">${i.toLocaleString('fa-IR')}</option>`);$('avd').value=Math.min(selected||1,max);syncAvailabilityDate()}
 function syncAvailabilityDate(){let iso=jToIso(Number($('avy').value),Number($('avm').value),Number($('avd').value));$('avdate').value=iso;$('avdateFa').textContent=faDate(iso,true)}
 async function editAppt(id){const a=(d.a||[]).find(x=>String(x.id)===String(id));if(!a)return;let sv=services.find(x=>String(x.id)===String(a.serviceId));if((services||[]).length){const choices=services.map((x,i)=>`${i+1}) ${x.name}${x.duration_minutes?' — '+x.duration_minutes+' دقیقه':''}`).join('\n');const current=Math.max(0,services.findIndex(x=>String(x.id)===String(a.serviceId)));const raw=prompt('شماره خدمت جدید را وارد کن؛ برای نگه‌داشتن خدمت فعلی خالی بگذار:\n'+choices,String(current+1));if(raw===null)return;if(raw.trim()){const n=Number(raw.trim());if(!Number.isInteger(n)||n<1||n>services.length){alert('شماره خدمت معتبر نیست.');return}sv=services[n-1]}}const rawPrice=prompt('مبلغ نهایی این نوبت (تومان):',String(Number(a.m||0)));if(rawPrice===null)return;const clean=String(rawPrice).replace(/[۰-۹]/g,dig=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(dig)).replace(/[٠-٩]/g,dig=>'٠١٢٣٤٥٦٧٨٩'.indexOf(dig)).replace(/[٬,\s]/g,'');const price=Number(clean);if(!Number.isFinite(price)||price<0){alert('مبلغ معتبر نیست.');return}const patch={price};if(sv)patch.service_id=sv.id;const {error}=await sb.from('appointments').update(patch).eq('id',id);if(error){alert('ویرایش نوبت ناموفق بود: '+error.message);return}a.m=price;if(sv){a.s=sv.name;a.serviceId=sv.id}save();alert('خدمت و مبلغ نوبت به‌روزرسانی شد.')}
-function renderAppts(){let f=$('apptFilter')?.value||'all';let now=new Date();let sorted=[...d.a].sort((x,y)=>(x.date+x.time).localeCompare(y.date+y.time));if(f==='today')sorted=sorted.filter(a=>a.date===today());if(f==='upcoming')sorted=sorted.filter(a=>new Date(a.date+'T'+a.time)>=now&&a.status!=='cancelled');if(f==='done')sorted=sorted.filter(a=>a.status==='done');if(f==='cancelled')sorted=sorted.filter(a=>a.status==='cancelled');$('alist').innerHTML=sorted.map(a=>`<div class="item ${a.date===today()?'soon':''}"><b>${a.time} — ${esc(cname(a.c))}</b><br><span class="date-fa">${faDate(a.date,false)}</span> · ${esc(a.s)} · ${money(a.m)} تومان<br><span class="badge">${statusLabel(a.status)}</span> ${a.rem?`<span class="badge warn">یادآوری ${a.rem>=1440?'۱ روز قبل':a.rem>=120?Math.round(a.rem/60)+' ساعت قبل':a.rem+' دقیقه قبل'}</span>`:''}<div class="actions"><button class="smallbtn" onclick='editAppt(${JSON.stringify(a.id)})'>ویرایش خدمت/مبلغ</button><button class="smallbtn" onclick='setStatus(${JSON.stringify(a.id)},"confirmed")'>تأیید</button><button class="smallbtn" onclick='setStatus(${JSON.stringify(a.id)},"done")'>انجام شد</button><button class="smallbtn" onclick='setStatus(${JSON.stringify(a.id)},"cancelled")'>لغو</button><button class="smallbtn" onclick='icsDownload(${JSON.stringify(a)})'>تقویم</button>${phone(a.c)?`<a href="${waLink(a)}" target="_blank"><button type="button" class="smallbtn">واتساپ</button></a>`:''}<button class="smallbtn danger" onclick='delAppt(${JSON.stringify(a.id)})'>حذف</button></div></div>`).join('')||'<div class="item empty">نوبتی پیدا نشد.</div>'}
+function renderAppts(){let f=$('apptFilter')?.value||'all';let now=new Date();let sorted=[...d.a].sort((x,y)=>(x.date+x.time).localeCompare(y.date+y.time));if(f==='today')sorted=sorted.filter(a=>a.date===today());if(f==='upcoming')sorted=sorted.filter(a=>new Date(a.date+'T'+a.time)>=now&&a.status!=='cancelled');if(f==='done')sorted=sorted.filter(a=>a.status==='done');if(f==='cancelled')sorted=sorted.filter(a=>a.status==='cancelled');$('alist').innerHTML=sorted.map(a=>`<div class="item ${a.date===today()?'soon':''}"><b>${a.time} — ${esc(cname(a.c))}</b><br><span class="date-fa">${faDate(a.date,false)}</span> · ${esc(a.s)} · ${money(a.m)} تومان<br><span class="badge">${statusLabel(a.status)}</span> ${a.rem?`<span class="badge warn">یادآوری ${a.rem>=1440?'۱ روز قبل':a.rem>=120?Math.round(a.rem/60)+' ساعت قبل':a.rem+' دقیقه قبل'}</span>`:''}<div class="actions"><button class="smallbtn" onclick='editAppt(${JSON.stringify(a.id)})'>ویرایش خدمت/مبلغ</button><button class="smallbtn" onclick='setApptReminder(${JSON.stringify(a.id)})'>تنظیم یادآوری</button><button class="smallbtn" onclick='setStatus(${JSON.stringify(a.id)},"confirmed")'>تأیید</button><button class="smallbtn" onclick='setStatus(${JSON.stringify(a.id)},"done")'>انجام شد</button><button class="smallbtn" onclick='setStatus(${JSON.stringify(a.id)},"cancelled")'>لغو</button><button class="smallbtn" onclick='icsDownload(${JSON.stringify(a)})'>تقویم</button>${phone(a.c)?`<a href="${waLink(a)}" target="_blank"><button type="button" class="smallbtn">واتساپ</button></a>`:''}<button class="smallbtn danger" onclick='delAppt(${JSON.stringify(a.id)})'>حذف</button></div></div>`).join('')||'<div class="item empty">نوبتی پیدا نشد.</div>'}
 function render(){let opts='<option value="">انتخاب مراجع</option>'+d.c.map(c=>`<option value="${c.id}">${esc(c.n)}</option>`).join('');$('ac').innerHTML=opts;$('pc').innerHTML=opts;$('nc').textContent=money(d.c.length);$('nt').textContent=money(d.a.filter(a=>a.date===today()&&a.status!=='cancelled').length);let paid=d.p.reduce((s,x)=>s+Number(x.m||0),0),sales=d.a.filter(a=>a.status!=='cancelled').reduce((s,x)=>s+Number(x.m||0),0);$('np').textContent=money(paid);$('nd').textContent=money(Math.max(0,sales-paid));$('todayFa').textContent=faDate(today(),false);renderClients();renderAppts();renderAvailability();renderReports();let future=[...d.a].filter(a=>new Date(a.date+'T'+a.time)>=new Date()&&a.status!=='cancelled').sort((x,y)=>(x.date+x.time).localeCompare(y.date+y.time)).slice(0,8);$('upcoming').innerHTML=future.map(a=>`<div class="item"><b>${esc(cname(a.c))} — ${a.time}</b><br>${faDate(a.date,false)} · ${esc(a.s)}</div>`).join('')||'<div class="item empty">نوبت پیش‌رو نداریم</div>';$('today').innerHTML=d.a.filter(a=>a.date===today()&&a.status!=='cancelled').sort((a,b)=>a.time.localeCompare(b.time)).map(a=>`<div class="item"><b>${a.time} — ${esc(cname(a.c))}</b><br>${esc(a.s)} · ${statusLabel(a.status)}</div>`).join('')||'<div class="item empty">برای امروز نوبتی ثبت نشده</div>';let soon=d.a.filter(a=>a.date===today()&&a.status!=='cancelled'&&a.rem&&!a.reminded&&new Date(a.date+'T'+a.time)-Date.now()<=a.rem*60000&&new Date(a.date+'T'+a.time)>Date.now());$('reminderNotice').innerHTML=soon.length?`<div class="notice warn">🔔 ${soon.length} نوبت در بازه یادآوری قرار دارد. اعلان‌ها را فعال کن.</div>`:'';updateNotifState()}
 function bookingNotifications(){return [...d.a].filter(a=>a.source==='public').sort((x,y)=>String(y.created||'').localeCompare(String(x.created||'')))}
 function refreshBookingNotifications(silent=false){
@@ -353,6 +353,29 @@ checkReminderServer();
     const id=$('paymentAppointment')?.value, a=(d.a||[]).find(x=>String(x.id)===String(id));
     if(a&&$('pa')) $('pa').value=Math.max(0,Number(a.m||0)-paidFor(a.id));
   };
+  window.setApptReminder = async function(id){
+    const a=(d.a||[]).find(x=>String(x.id)===String(id));
+    if(!a){alert('نوبت پیدا نشد.');return;}
+    if(!currentUser){alert('ابتدا وارد پنل مدیریت شوید.');return;}
+    const values=[0,30,60,120,720,1440];
+    const labels=['بدون یادآوری','۳۰ دقیقه قبل','۱ ساعت قبل','۲ ساعت قبل','۱۲ ساعت قبل','۱ روز قبل'];
+    const active=values.indexOf(Number(a.rem||0));
+    const initial=String((active<0?0:active)+1);
+    let answer=window.prompt('زمان یادآوری را انتخاب کن:\n'+labels.map((x,i)=>`${i+1}) ${x}`).join('\n')+'\n\nشماره گزینه را وارد کن:',initial);
+    if(answer===null)return;
+    answer=String(answer).replace(/[۰-۹]/g,x=>String('۰۱۲۳۴۵۶۷۸۹'.indexOf(x))).replace(/[٠-٩]/g,x=>String('٠١٢٣٤٥٦٧٨٩'.indexOf(x))).trim();
+    const choice=Number(answer);
+    if(!Number.isInteger(choice)||choice<1||choice>values.length){alert('شماره گزینه معتبر نیست.');return;}
+    const minutes=values[choice-1];
+    const {error}=await sb.from('appointments').update({reminder_minutes:minutes,reminder_sent_at:null,reminder_attempts:0}).eq('id',a.id).eq('owner_id',currentUser.id);
+    if(error){alert('ذخیره یادآوری ناموفق بود: '+error.message);return;}
+    a.rem=minutes;a.reminderSentAt=null;a.reminderAttempts=0;a.reminded=false;
+    if(typeof save==='function')save();
+    if(typeof render==='function')render();
+    else if(typeof renderAppts==='function')renderAppts();
+    alert(minutes?`یادآوری ${labels[choice-1]} برای این نوبت ذخیره شد.`:'یادآوری این نوبت غیرفعال شد.');
+  };
+
   window.tanaraPayAppt=id=>{
     const a=(d.a||[]).find(x=>String(x.id)===String(id)); if(!a)return;
     if($('pc')){$('pc').value=a.c;paymentAppointmentOptions();if($('paymentAppointment'))$('paymentAppointment').value=a.id;window.tanaraFillPayAmount();}
@@ -530,25 +553,185 @@ function parseJalaliInput(s){const clean=String(s||'').replace(/[۰-۹]/g,dig=>'
 function getTanaraReportPeriod(){const mode=$('reportMode')?.value||'month',year=Number($('reportYear')?.value||isoToJ(today())[0]);let start,endExclusive,label='';if(mode==='month'){const month=Number($('reportMonth')?.value||isoToJ(today())[1]);start=jToIso(year,month,1);endExclusive=month===12?jToIso(year+1,1,1):jToIso(year,month+1,1);label=`${jMonths[month-1]} ${year.toLocaleString('fa-IR')}`}else if(mode==='year'){start=jToIso(year,1,1);endExclusive=jToIso(year+1,1,1);label=`سال ${year.toLocaleString('fa-IR')}`}else{start=parseJalaliInput($('reportStart')?.value);const end=parseJalaliInput($('reportEnd')?.value);if(!start||!end||end<start)return {error:'بازه تاریخ شمسی را به شکل سال/ماه/روز درست وارد کن.'};endExclusive=tanaraNextISO(end,1);label=`از ${faDate(start,false)} تا ${faDate(end,false)}`}return {mode,year,start,endExclusive,label}}
 function renderReportPeople(start,endExclusive,label){const box=$('reportPeople');if(!box)return;const period=$('reportPeoplePeriod');if(period)period.textContent=label||'';const rows=(d.c||[]).map(c=>{const aps=(d.a||[]).filter(a=>String(a.c)===String(c.id)&&a.date>=start&&a.date<endExclusive&&a.status!=='cancelled').sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));const pays=(d.p||[]).filter(p=>String(p.c)===String(c.id)&&paymentServiceDate(p)>=start&&paymentServiceDate(p)<endExclusive).sort((a,b)=>String(paymentServiceDate(a)).localeCompare(String(paymentServiceDate(b))));const paid=pays.reduce((sum,p)=>sum+Number(p.m||0),0);return {c,aps,pays,paid}}).filter(x=>x.aps.length||x.pays.length).sort((a,b)=>((b.aps.length*1000000000+b.pays.length*1000000+b.paid)-(a.aps.length*1000000000+a.pays.length*1000000+a.paid)));box.innerHTML=rows.map(x=>`<div class="item report-person"><div class="report-person-head"><b>${esc(x.c.n)}</b><span class="muted">${esc(x.c.p||'بدون شماره')}</span></div><div class="report-person-stats"><span>جلسات: <b>${money(x.aps.length)}</b></span><span>تعداد پرداخت‌ها: <b>${money(x.pays.length)}</b></span><span>جمع پرداخت این بازه: <b>${money(x.paid)} تومان</b></span></div>${x.aps.length?`<div class="report-person-detail"><b>نوبت‌ها</b>${x.aps.map(a=>`<div>• ${faDate(a.date,false)}، ${esc(a.time||'')} — ${esc(a.s||'')} (${statusLabel(a.status)})</div>`).join('')}</div>`:''}${x.pays.length?`<div class="report-person-detail"><b>پرداخت‌ها</b>${x.pays.map(p=>{const ap=p.appointmentId?(d.a||[]).find(a=>String(a.id)===String(p.appointmentId)):null;return `<div>• ${faDate(paymentServiceDate(p),false)} — ${money(p.m)} تومان · ${esc(p.method||'روش ثبت‌نشده')}${ap?' · تاریخ انجام خدمت · متصل به نوبت '+esc(ap.time||''):' · بدون اتصال به نوبت · تاریخ ثبت پرداخت '+faDate(p.date,false)}</div>`}).join('')}</div>`:''}</div>`).join('')||'<div class="item empty">در این بازه مراجعه یا پرداختی ثبت نشده است.</div>'}
 function paymentServiceDate(p){const ap=p&&p.appointmentId?(d.a||[]).find(a=>String(a.id)===String(p.appointmentId)):null;return ap&&ap.date?ap.date:(p&&p.date||'')}
-function renderReportPeriod(){const p=getTanaraReportPeriod();if(p.error){$('reportPeriodResult').innerHTML=`<span style="color:#a33">${esc(p.error)}</span>`;return}const {mode,year,start,endExclusive,label}=p;const ps=(d.p||[]).filter(x=>paymentServiceDate(x)>=start&&paymentServiceDate(x)<endExclusive),total=ps.reduce((a,x)=>a+Number(x.m||0),0),appointments=(d.a||[]).filter(a=>a.date>=start&&a.date<endExclusive&&a.status!=='cancelled').length,debts=(d.c||[]).map(c=>clientStats(c.id)).reduce((a,x)=>a+x.debt,0);if($('rMonth'))$('rMonth').textContent=money(total);if($('rSessions'))$('rSessions').textContent=money(appointments);if($('rMonthLabel'))$('rMonthLabel').textContent=mode==='month'?`درآمد ${label}`:`درآمد ${label}`;if($('rSessionsLabel'))$('rSessionsLabel').textContent=mode==='month'?`تعداد جلسات ${label}`:`تعداد جلسات ${label}`;if($('rDebt'))$('rDebt').textContent=money(debts);$('reportPeriodResult').innerHTML=`<b>گزارش ${esc(label)}</b><div>مجموع دریافتی: <strong>${money(total)} تومان</strong></div><div>تعداد پرداخت‌ها: ${money(ps.length)}</div><div>تعداد نوبت‌ها: ${money(appointments)}</div><div>بدهی باقی‌مانده کل: ${money(debts)} تومان</div>`;if(mode==='year'){const monthly=[];for(let m=1;m<=12;m++){const a=jToIso(year,m,1),b=m===12?jToIso(year+1,1,1):jToIso(year,m+1,1),sum=(d.p||[]).filter(x=>x.date>=a&&x.date<b).reduce((v,x)=>v+Number(x.m||0),0);monthly.push(`<div class="kpi"><span>${jMonths[m-1]}</span><b>${money(sum)} تومان</b></div>`)}$('reportPeriodResult').innerHTML+=monthly.join('')}renderReportPeople(start,endExclusive,label)}
+function renderReportPeriod(){const p=getTanaraReportPeriod();if(p.error){$('reportPeriodResult').innerHTML=`<span style="color:#a33">${esc(p.error)}</span>`;return}const {mode,year,start,endExclusive,label}=p;const ps=(d.p||[]).filter(x=>paymentServiceDate(x)>=start&&paymentServiceDate(x)<endExclusive),total=ps.reduce((a,x)=>a+Number(x.m||0),0),appointments=(d.a||[]).filter(a=>a.date>=start&&a.date<endExclusive&&a.status!=='cancelled').length,debts=(d.c||[]).map(c=>clientStats(c.id)).reduce((a,x)=>a+x.debt,0);if($('rMonth'))$('rMonth').textContent=money(total);if($('rSessions'))$('rSessions').textContent=money(appointments);if($('rMonthLabel'))$('rMonthLabel').textContent=mode==='month'?`درآمد ${label}`:`درآمد ${label}`;if($('rSessionsLabel'))$('rSessionsLabel').textContent=mode==='month'?`تعداد جلسات ${label}`:`تعداد جلسات ${label}`;if($('rDebt'))$('rDebt').textContent=money(debts);$('reportPeriodResult').innerHTML=`<b>گزارش ${esc(label)}</b><div>مجموع دریافتی: <strong>${money(total)} تومان</strong></div><div>تعداد پرداخت‌ها: ${money(ps.length)}</div><div>تعداد نوبت‌ها: ${money(appointments)}</div><div>بدهی باقی‌مانده کل: ${money(debts)} تومان</div>`;if(mode==='year'){const monthly=[];for(let m=1;m<=12;m++){const a=jToIso(year,m,1),b=m===12?jToIso(year+1,1,1):jToIso(year,m+1,1),sum=(d.p||[]).filter(x=>paymentServiceDate(x)>=a&&paymentServiceDate(x)<b).reduce((v,x)=>v+Number(x.m||0),0);monthly.push(`<div class="kpi"><span>${jMonths[m-1]}</span><b>${money(sum)} تومان</b></div>`)}$('reportPeriodResult').innerHTML+=monthly.join('')}renderReportPeople(start,endExclusive,label)}
 function tanaraGiftList(){try{return JSON.parse(localStorage.getItem(TANARA_GIFT_KEY)||'[]')}catch(_){return []}}
 function saveTanaraGiftList(items){localStorage.setItem(TANARA_GIFT_KEY,JSON.stringify(items));renderTanaraGiftList()}
 function fillGiftServices(){const sel=$('giftService');if(!sel)return;const opts=(services||[]).map(x=>`<option value="${escAttr(x.id)}">${esc(x.name)}${x.duration_minutes?' — '+money(x.duration_minutes)+' دقیقه':''}</option>`).join('');sel.innerHTML=opts||'<option value="">خدمات بارگذاری نشده‌اند</option>'}
 function getTanaraLogo(){return document.querySelector('.tanara-logo-wrap img')?.src||''}
-function createGiftCard(e){e.preventDefault();const sv=(services||[]).find(x=>String(x.id)===String($('giftService').value));if(!sv){alert('خدمت هدیه را انتخاب کن.');return}const code='TA-'+Date.now().toString(36).toUpperCase()+'-'+Math.random().toString(36).slice(2,6).toUpperCase();const gift={code,service:sv.name,duration:sv.duration_minutes||null,recipient:$('giftRecipient').value.trim(),sender:$('giftSender').value.trim()||'ایمان سلطانی',message:$('giftMessage').value.trim(),paid:$('giftPaid').value==='paid',created:new Date().toISOString(),address:TANARA_ADDRESS,phone:'۰۹۱۰۵۰۹۱۳۶۴'};const payload=btoa(unescape(encodeURIComponent(JSON.stringify(gift))));const url=new URL('gift.html',location.href);url.searchParams.set('data',payload);gift.url=url.href;gift.redeemed=false;const items=tanaraGiftList();items.unshift(gift);saveTanaraGiftList(items);window.currentTanaraGift=gift;renderGiftPreview(gift);$('giftPreviewWrap').style.display='block';$('giftLinkText').textContent=gift.url;$('giftOpenLink').href=gift.url}
-function renderGiftPreview(g){const logo=getTanaraLogo();$('giftPreview').innerHTML=`<img alt="لوگوی تن‌آرا" src="${logo}" style="max-width:96px;max-height:76px;object-fit:contain;background:#fff;border-radius:10px;padding:5px"><div style="font-size:13px;margin-top:10px">کلینیک تخصصی ماساژ</div><h2>کارت هدیه ماساژ تن‌آرا</h2><div style="font-size:19px;font-weight:800;margin:12px">تقدیم به ${esc(g.recipient)}</div><div style="font-size:17px">${esc(g.service)}${g.duration?' · '+money(g.duration)+' دقیقه':''}</div><p>${esc(g.message||'با آرزوی آرامش و تندرستی')}</p><div>از طرف: ${esc(g.sender)}</div><div class="gift-code">کد هدیه: ${esc(g.code)}</div><div class="gift-address">${esc(TANARA_ADDRESS)}<br>ایمان سلطانی · ۰۹۱۰۵۰۹۱۳۶۴<br>${g.paid?'وضعیت پرداخت: پرداخت‌شده':'وضعیت پرداخت: پرداخت‌نشده'}</div>`}
-function downloadGiftImage(){const g=window.currentTanaraGift;if(!g)return;const canvas=document.createElement('canvas');canvas.width=1200;canvas.height=760;const c=canvas.getContext('2d');const grad=c.createLinearGradient(0,0,1200,760);grad.addColorStop(0,'#fffdf7');grad.addColorStop(0.58,'#f4f0e4');grad.addColorStop(1,'#e6efe7');c.fillStyle=grad;c.fillRect(0,0,1200,760);c.fillStyle='#dfe8dd';c.beginPath();c.arc(1090,110,210,0,Math.PI*2);c.fill();c.strokeStyle='#b99b54';c.lineWidth=8;c.strokeRect(24,24,1152,712);c.strokeStyle='#b99b54';c.lineWidth=2;c.strokeRect(42,42,1116,676);const logo=document.querySelector('.tanara-logo-wrap img');const drawText=(text,y,size=34,weight='500')=>{c.fillStyle='#244c42';c.font=`${weight} ${size}px sans-serif`;c.direction='rtl';c.textAlign='center';c.fillText(text,600,y,1050)};const finish=()=>{drawText('کلینیک تخصصی ماساژ تن‌آرا',230,34,'700');drawText('کارت هدیه ماساژ',300,54,'800');drawText('تقدیم به '+g.recipient,380,40,'700');drawText(g.service+(g.duration?' · '+g.duration+' دقیقه':''),445,32,'600');drawText(g.message||'با آرزوی آرامش و تندرستی',500,26);drawText('از طرف: '+g.sender,550,26);drawText('کد هدیه: '+g.code,600,32,'700');drawText(TANARA_ADDRESS,650,20);drawText('ایمان سلطانی · ۰۹۱۰۵۰۹۱۳۶۴ · '+(g.paid?'پرداخت‌شده':'پرداخت‌نشده'),690,22);canvas.toBlob(blob=>{if(!blob){alert('ساخت تصویر ناموفق بود.');return}const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='TanAra-Gift-'+g.code+'.png';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1500)},'image/png')};if(logo?.src){const im=new Image();im.onload=()=>{const w=120,h=100,ratio=Math.min(w/im.width,h/im.height);c.fillStyle='#fffdf7';c.fillRect(540,65,120,105);c.drawImage(im,600-im.width*ratio/2,67+(100-im.height*ratio)/2,im.width*ratio,im.height*ratio);finish()};im.onerror=finish;im.src=logo.src}else finish()}
+function createGiftCard(e){e.preventDefault();const sv=(services||[]).find(x=>String(x.id)===String($('giftService').value));if(!sv){alert('خدمت هدیه را انتخاب کن.');return}const code='TA-'+Date.now().toString(36).toUpperCase()+'-'+Math.random().toString(36).slice(2,6).toUpperCase();const gift={code,service:sv.name,duration:sv.duration_minutes||null,recipient:$('giftRecipient').value.trim(),sender:$('giftSender').value.trim()||'ایمان سلطانی',message:$('giftMessage').value.trim(),paid:$('giftPaid').value==='paid',created:new Date().toISOString(),address:TANARA_ADDRESS,phone:'0909 105 09364'};const payload=btoa(unescape(encodeURIComponent(JSON.stringify(gift))));const url=new URL('gift.html',location.href);url.searchParams.set('data',payload);gift.url=url.href;gift.redeemed=false;const items=tanaraGiftList();items.unshift(gift);saveTanaraGiftList(items);window.currentTanaraGift=gift;renderGiftPreview(gift);$('giftPreviewWrap').style.display='block';$('giftLinkText').textContent=gift.url;$('giftOpenLink').href=gift.url}
+function renderGiftPreview(g){$('giftPreview').innerHTML=`<img alt="کارت هدیه رسمی تن‌آرا" src="gift-card-design.png" style="display:block;width:100%;height:auto;max-height:none;object-fit:contain;border-radius:14px;margin:0 auto 14px"><div style="font-size:19px;font-weight:800;margin:12px">تقدیم به ${esc(g.recipient)}</div><div style="font-size:17px;font-weight:700">${esc(g.service)}${g.duration?' · '+money(g.duration)+' دقیقه':''}</div><p>${esc(g.message||'با آرزوی آرامش و تندرستی')}</p><div>از طرف: ${esc(g.sender)}</div><div class="gift-code">کد اختصاصی: ${esc(g.code)}</div><div class="gift-address">${esc(TANARA_ADDRESS)}<br>ایمان سلطانی · 0909 105 09364<br>${g.paid?'وضعیت پرداخت: پرداخت‌شده':'وضعیت پرداخت: پرداخت‌نشده'}</div>`}
+function downloadGiftImage(){const g=window.currentTanaraGift;if(!g)return;const canvas=document.createElement('canvas');canvas.width=1200;canvas.height=760;const c=canvas.getContext('2d');const grad=c.createLinearGradient(0,0,1200,760);grad.addColorStop(0,'#fffdf7');grad.addColorStop(0.58,'#f4f0e4');grad.addColorStop(1,'#e6efe7');c.fillStyle=grad;c.fillRect(0,0,1200,760);c.fillStyle='#dfe8dd';c.beginPath();c.arc(1090,110,210,0,Math.PI*2);c.fill();c.strokeStyle='#b99b54';c.lineWidth=8;c.strokeRect(24,24,1152,712);c.strokeStyle='#b99b54';c.lineWidth=2;c.strokeRect(42,42,1116,676);const logo=document.querySelector('.tanara-logo-wrap img');const drawText=(text,y,size=34,weight='500')=>{c.fillStyle='#244c42';c.font=`${weight} ${size}px sans-serif`;c.direction='rtl';c.textAlign='center';c.fillText(text,600,y,1050)};const finish=()=>{drawText('کلینیک تخصصی ماساژ تن‌آرا',230,34,'700');drawText('کارت هدیه ماساژ',300,54,'800');drawText('تقدیم به '+g.recipient,380,40,'700');drawText(g.service+(g.duration?' · '+g.duration+' دقیقه':''),445,32,'600');drawText(g.message||'با آرزوی آرامش و تندرستی',500,26);drawText('از طرف: '+g.sender,550,26);drawText('کد هدیه: '+g.code,600,32,'700');drawText(TANARA_ADDRESS,650,20);drawText('ایمان سلطانی · 0909 105 09364 · '+(g.paid?'پرداخت‌شده':'پرداخت‌نشده'),690,22);canvas.toBlob(blob=>{if(!blob){alert('ساخت تصویر ناموفق بود.');return}const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='TanAra-Gift-'+g.code+'.png';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1500)},'image/png')};if(logo?.src){const im=new Image();im.onload=()=>{const w=120,h=100,ratio=Math.min(w/im.width,h/im.height);c.fillStyle='#fffdf7';c.fillRect(540,65,120,105);c.drawImage(im,600-im.width*ratio/2,67+(100-im.height*ratio)/2,im.width*ratio,im.height*ratio);finish()};im.onerror=finish;im.src=logo.src}else finish()}
 async function copyGiftLink(){const g=window.currentTanaraGift;if(!g)return;try{await navigator.clipboard.writeText(g.url);alert('لینک کارت هدیه کپی شد.')}catch(_){prompt('لینک را کپی کن:',g.url)}}
 function renderTanaraGiftList(){const box=$('giftList');if(!box)return;const items=tanaraGiftList();box.innerHTML=items.map(g=>`<div class="item"><b>${esc(g.recipient)}</b> — ${esc(g.service)}<br><span class="badge ${g.paid?'ok':'warn'}">${g.paid?'پرداخت‌شده':'پرداخت‌نشده'}</span> <span class="badge ${g.redeemed?'cancel':'ok'}">${g.redeemed?'استفاده‌شده':'استفاده‌نشده'}</span><br><span class="muted">کد: ${esc(g.code)}</span><div class="actions"><button type="button" class="smallbtn" onclick='openSavedGift(${JSON.stringify(g.code)})'>نمایش کارت</button><button type="button" class="smallbtn" onclick='toggleGiftPaid(${JSON.stringify(g.code)})'>تغییر وضعیت پرداخت</button><button type="button" class="smallbtn" onclick='toggleGiftRedeemed(${JSON.stringify(g.code)})'>${g.redeemed?'علامت‌زدن استفاده‌نشده':'ثبت استفاده'}</button></div></div>`).join('')||'<div class="empty">هنوز کارت هدیه‌ای ساخته نشده است.</div>'}
 function openSavedGift(code){const g=tanaraGiftList().find(x=>x.code===code);if(!g)return;window.currentTanaraGift=g;renderGiftPreview(g);$('giftPreviewWrap').style.display='block';$('giftLinkText').textContent=g.url;$('giftOpenLink').href=g.url;window.scrollTo({top:$('giftPreviewWrap').getBoundingClientRect().top+window.scrollY,behavior:'smooth'})}
 function updateSavedGift(code,patch){saveTanaraGiftList(tanaraGiftList().map(g=>g.code===code?{...g,...patch}:g))}
 function toggleGiftPaid(code){const g=tanaraGiftList().find(x=>x.code===code);if(!g)return;updateSavedGift(code,{paid:!g.paid});if(window.currentTanaraGift?.code===code){window.currentTanaraGift={...window.currentTanaraGift,paid:!g.paid};renderGiftPreview(window.currentTanaraGift)}}
 function toggleGiftRedeemed(code){const g=tanaraGiftList().find(x=>x.code===code);if(!g)return;updateSavedGift(code,{redeemed:!g.redeemed})}
-function renderGiftPublic(){const params=new URLSearchParams(location.search),payload=params.get('data');if(!payload)return false;let g;try{g=JSON.parse(decodeURIComponent(escape(atob(payload))))}catch(_){return false}document.body.innerHTML=`<div class="gift-public"><div class="gift-card-preview"><img class="gift-logo" src="${getTanaraLogo()}" alt="لوگوی تن‌آرا"><div>کلینیک تخصصی ماساژ</div><h2>کارت هدیه ماساژ تن‌آرا</h2><h3>تقدیم به ${esc(g.recipient||'دوست عزیز')}</h3><div>${esc(g.service||'ماساژ')}</div><p>${esc(g.message||'با آرزوی آرامش و تندرستی')}</p><div>از طرف: ${esc(g.sender||'تن‌آرا')}</div><div class="gift-code">کد هدیه: ${esc(g.code||'')}</div><div class="gift-address">${esc(g.address||TANARA_ADDRESS)}<br>${esc(g.phone||'۰۹۱۰۵۰۹۱۳۶۴')}<br>${g.paid?'وضعیت پرداخت: پرداخت‌شده':'وضعیت پرداخت: پرداخت‌نشده'}</div></div><p style="text-align:center;line-height:2">برای هماهنگی و رزرو زمان استفاده از هدیه، روی دکمه زیر بزن و هنگام رزرو کد هدیه را اعلام کن.</p><a href="/booking.html?gift=${encodeURIComponent(g.code||'')}" style="display:block;text-align:center;background:#087a73;color:white;padding:14px;border-radius:12px;text-decoration:none;font-weight:800">رزرو زمان استفاده از هدیه</a></div>`;return true}
+function renderGiftPublic(){const params=new URLSearchParams(location.search),payload=params.get('data');if(!payload)return false;let g;try{g=JSON.parse(decodeURIComponent(escape(atob(payload))))}catch(_){return false}document.body.innerHTML=`<div class="gift-public"><div class="gift-card-preview"><img class="gift-logo" src="${getTanaraLogo()}" alt="لوگوی تن‌آرا"><div>کلینیک تخصصی ماساژ</div><h2>کارت هدیه ماساژ تن‌آرا</h2><h3>تقدیم به ${esc(g.recipient||'دوست عزیز')}</h3><div>${esc(g.service||'ماساژ')}</div><p>${esc(g.message||'با آرزوی آرامش و تندرستی')}</p><div>از طرف: ${esc(g.sender||'تن‌آرا')}</div><div class="gift-code">کد هدیه: ${esc(g.code||'')}</div><div class="gift-address">${esc(g.address||TANARA_ADDRESS)}<br>${esc(g.phone||'0909 105 09364')}<br>${g.paid?'وضعیت پرداخت: پرداخت‌شده':'وضعیت پرداخت: پرداخت‌نشده'}</div></div><p style="text-align:center;line-height:2">برای هماهنگی و رزرو زمان استفاده از هدیه، روی دکمه زیر بزن و هنگام رزرو کد هدیه را اعلام کن.</p><a href="/booking.html?gift=${encodeURIComponent(g.code||'')}" style="display:block;text-align:center;background:#087a73;color:white;padding:14px;border-radius:12px;text-decoration:none;font-weight:800">رزرو زمان استفاده از هدیه</a></div>`;return true}
 function initTanaraFeatures(){fillGiftServices();initReportSelectors();renderDebts();renderTanaraGiftList();updatePayAppointments();}
 const _tanaraBaseRender=render;render=function(){_tanaraBaseRender();try{renderDashboardExtras();renderDebts();updatePayAppointments();togglePayLinkMode();fillGiftServices();renderTanaraGiftList();if($('reportMode'))renderReportPeriod()}catch(e){console.warn('TanAra UI update',e)}};
 addEventListener('DOMContentLoaded',()=>{initTanaraFeatures();if(new URLSearchParams(location.search).has('data'))renderGiftPublic()});
 // Payment records are linked to a selected appointment when requested; debt payments can stay unlinked.
 addPay=async function(e){e.preventDefault();if(!currentUser)return;const clientId=$('pc').value,linked=$('payLinkMode')?.value==='linked',appointmentId=linked?($('payAppt')?.value||null):null,amount=Number($('pa').value||0);if(!clientId){alert('ابتدا مراجعه‌کننده را انتخاب کن.');return}if(linked&&!appointmentId){alert('برای ثبت با اتصال، نوبت همان مراجعه‌کننده را انتخاب کن.');return}if(appointmentId&&!d.a.some(a=>String(a.id)===String(appointmentId)&&String(a.c)===String(clientId))){alert('نوبت انتخاب‌شده متعلق به این مراجعه‌کننده نیست.');return}const ok=await recordClientPayment(clientId,amount,appointmentId);if(ok){e.target.reset();setupPaymentJalali(today());updatePayAppointments();togglePayLinkMode();alert(appointmentId?'پرداخت با اتصال به نوبت ثبت شد.':'پرداخت بدون اتصال به نوبت ثبت شد.')}};
+</script>
+
+<style id="tanara-calendar-functional-patch">
+.appt-month-calendar{background:#fff;border:1px solid #d8e8e4;border-radius:16px;padding:12px;margin:10px 0 16px}
+.appt-month-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;direction:rtl}
+.appt-month-grid .weekday{font-size:12px;font-weight:800;text-align:center;padding:7px 0;color:#50716b}
+.appt-month-grid .day{min-height:54px;padding:5px 2px;border:1px solid #e2eeea;border-radius:9px;background:#f9fcfb;text-align:center;font-size:13px;color:#174e4b;cursor:pointer}
+.appt-month-grid .day.selected{background:#087a73;color:#fff;border-color:#087a73}
+.appt-month-grid .day.today{outline:2px solid #d5a84d;outline-offset:-2px}
+.appt-month-grid .day .count{display:block;font-size:10px;margin-top:2px;color:inherit}
+.appt-month-grid .blank{min-height:54px}
+@media(max-width:520px){.appt-month-grid{gap:3px}.appt-month-grid .day{min-height:45px;font-size:12px}.appt-month-grid .day .count{font-size:9px}.appt-month-calendar{padding:7px}}
+</style>
+<script id="tanara-calendar-and-actions-repair">
+(function(){
+ let selectedISO = (typeof today==='function'?today():new Date().toISOString().slice(0,10));
+ let viewJ = (typeof isoToJ==='function'?isoToJ(selectedISO):[1405,7,24]);
+ const week=['ش','ی','د','س','چ','پ','ج'];
+ function toFa(n){return Number(n).toLocaleString('fa-IR')}
+ function monthLabel(y,m){return `${jMonths[m-1]} ${toFa(y)}`}
+ function drawCalendar(){
+   const box=document.getElementById('alist'); if(!box)return;
+   const filter=document.getElementById('apptFilter')?.value||'all';
+   const y=Number(viewJ[0]),m=Number(viewJ[1]),total=daysInJ(y,m);
+   const firstISO=jToIso(y,m,1); const [gy,gm,gd]=firstISO.split('-').map(Number); const offset=(new Date(gy,gm-1,gd,12).getDay()+1)%7;
+   let grid=week.map(w=>`<div class="weekday">${w}</div>`).join('');
+   for(let i=0;i<offset;i++)grid+='<div class="blank"></div>';
+   for(let day=1;day<=total;day++){
+     const iso=jToIso(y,m,day),count=(d.a||[]).filter(a=>a.date===iso&&a.status!=='cancelled').length;
+     const cls=['day',iso===selectedISO?'selected':'',iso===today()?'today':''].filter(Boolean).join(' ');
+     grid+=`<button type="button" class="${cls}" onclick="tanaraCalendarPick('${iso}')">${toFa(day)}${count?`<span class="count">${toFa(count)} نوبت</span>`:'<span class="count">&nbsp;</span>'}</button>`;
+   }
+   let appts=[...(d.a||[])].filter(a=>a.date===selectedISO).sort((a,b)=>(a.time||'').localeCompare(b.time||''));
+   if(filter==='today')appts=appts.filter(a=>a.date===today());
+   if(filter==='upcoming')appts=appts.filter(a=>new Date(a.date+'T'+(a.time||'00:00'))>=new Date()&&a.status!=='cancelled');
+   if(filter==='done')appts=appts.filter(a=>a.status==='done');
+   if(filter==='cancelled')appts=appts.filter(a=>a.status==='cancelled');
+   const html=appts.map(a=>`<div class="item ${a.date===today()?'soon':''}"><div class="client-head"><div><b>${esc(a.time||'')} — ${esc(cname(a.c))}</b><br><span class="date-fa">${esc(faDate(a.date,false))}</span> · ${esc(a.s||'')} · ${money(a.m)} تومان</div><span class="badge">${esc(statusLabel(a.status))}</span></div><div class="actions"><button type="button" class="smallbtn" onclick='editAppt(${JSON.stringify(a.id)})'>ویرایش خدمت/مبلغ</button><button type="button" class="smallbtn" onclick='setApptReminder(${JSON.stringify(a.id)})'>تنظیم یادآوری</button><button type="button" class="smallbtn" onclick='setStatus(${JSON.stringify(a.id)},"confirmed")'>تأیید</button><button type="button" class="smallbtn" onclick='setStatus(${JSON.stringify(a.id)},"done")'>انجام شد</button><button type="button" class="smallbtn" onclick='tanaraPayAppt(${JSON.stringify(a.id)})'>ثبت پرداخت متصل</button><button type="button" class="smallbtn" onclick='setStatus(${JSON.stringify(a.id)},"cancelled")'>لغو</button><button type="button" class="smallbtn danger" onclick='delAppt(${JSON.stringify(a.id)})'>حذف</button></div></div>`).join('')||'<div class="item empty">برای این روز نوبتی ثبت نشده است.</div>';
+   box.innerHTML=`<div class="appt-month-calendar"><div class="calendar-head"><button type="button" class="smallbtn" onclick="tanaraCalendarMonth(-1)">ماه قبل</button><div class="calendar-title">${monthLabel(y,m)}</div><button type="button" class="smallbtn" onclick="tanaraCalendarMonth(1)">ماه بعد</button><button type="button" class="smallbtn" onclick="tanaraCalendarToday()">امروز</button></div><div class="appt-month-grid">${grid}</div><p class="muted">روز انتخاب‌شده: ${faDate(selectedISO,false)} — تعداد نوبت‌ها: ${toFa((d.a||[]).filter(a=>a.date===selectedISO&&a.status!=='cancelled').length)}</p></div><div class="section-title"><h4>نوبت‌های ${faDate(selectedISO,false)}</h4></div>${html}`;
+ }
+ window.tanaraCalendarPick=iso=>{selectedISO=iso;viewJ=isoToJ(iso);drawCalendar()};
+ window.tanaraCalendarMonth=delta=>{let y=Number(viewJ[0]),m=Number(viewJ[1])+delta;if(m<1){m=12;y--}if(m>12){m=1;y++}viewJ=[y,m,1];selectedISO=jToIso(y,m,1);drawCalendar()};
+ window.tanaraCalendarToday=()=>{selectedISO=today();viewJ=isoToJ(selectedISO);drawCalendar()};
+ window.renderAppts=drawCalendar;
+ // Make payment-to-appointment connection actually persist on the payment row.
+ window.addPay=async function(e){
+   e.preventDefault(); if(!currentUser)return;
+   const linked=document.getElementById('payLinkMode')?.value==='linked';
+   const apptId=linked?document.getElementById('payAppt')?.value:'';
+   if(linked&&!apptId){alert('برای ثبت پرداخت متصل، نوبت را انتخاب کن.');return}
+   const appt=apptId?(d.a||[]).find(a=>String(a.id)===String(apptId)):null;
+   if(linked&&(!appt||String(appt.c)!==String(document.getElementById('pc').value))){alert('نوبت انتخاب‌شده متعلق به این مراجعه‌کننده نیست.');return}
+   const amount=Number(document.getElementById('pa').value||0);if(!Number.isFinite(amount)||amount<=0){alert('مبلغ پرداختی معتبر نیست.');return}
+   const row={owner_id:currentUser.id,client_id:document.getElementById('pc').value,amount,payment_method:document.getElementById('payMethod').value,payment_date:document.getElementById('pd').value,...(apptId?{appointment_id:apptId}:{})};
+   const {data,error}=await sb.from('payments').insert(row).select('id,client_id,amount,payment_method,payment_date,appointment_id').single();
+   if(error){alert('ثبت پرداخت ناموفق بود: '+error.message);return}
+   d.p.push({id:data.id,c:data.client_id,m:Number(data.amount||0),date:data.payment_date,method:data.payment_method,appointmentId:data.appointment_id||null});
+   document.getElementById('payForm').reset();setupPaymentJalali(today());if(typeof updatePayAppointments==='function')updatePayAppointments();save();alert('پرداخت با موفقیت ثبت شد'+(apptId?' و به نوبت متصل شد.':'.'));
+ };
+ window.tanaraPayAppt=function(id){const a=(d.a||[]).find(x=>String(x.id)===String(id));if(!a)return;showPageById('pay');const pc=document.getElementById('pc');if(pc){pc.value=a.c;updatePayAppointments()}const mode=document.getElementById('payLinkMode');if(mode){mode.value='linked';togglePayLinkMode()}const sel=document.getElementById('payAppt');if(sel)sel.value=String(a.id);const pa=document.getElementById('pa');if(pa)pa.value=Math.max(0,Number(a.m||0)-(d.p||[]).filter(p=>String(p.appointmentId)===String(a.id)).reduce((sum,p)=>sum+Number(p.m||0),0));
+ };
+ const oldToggle=window.togglePayLinkMode;window.togglePayLinkMode=function(){if(oldToggle)oldToggle();if(document.getElementById('payLinkMode')?.value==='linked')window.updatePayAppointments()};
+ const oldUpdate=window.updatePayAppointments;window.updatePayAppointments=function(){if(oldUpdate)oldUpdate();const pc=document.getElementById('pc'),sel=document.getElementById('payAppt');if(!pc||!sel)return;const list=(d.a||[]).filter(a=>String(a.c)===String(pc.value)&&a.status!=='cancelled');if(!list.length)sel.innerHTML='<option value="">برای این مراجعه‌کننده نوبتی ثبت نشده</option>'};
+ const originalRender=window.render;window.render=function(){if(originalRender)originalRender();drawCalendar();if(typeof renderDashboardExtras==='function')renderDashboardExtras();if(typeof renderDebts==='function')renderDebts();if(typeof fillGiftServices==='function')fillGiftServices()};
+ document.addEventListener('DOMContentLoaded',drawCalendar);setTimeout(drawCalendar,700);
+})();
+</script>
+
+<script id="tanara-final-audit-fixes">
+(function(){
+  'use strict';
+  const el = id => document.getElementById(id);
+  function cleanPhone(value){ return String(value || '').replace(/[۰-۹]/g, d => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d))).replace(/[٠-٩]/g, d => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).trim().replace(/[^0-9+]/g,''); }
+  window.sendSmsClient = function(id, presetText){
+    const c = (d.c || []).find(x => String(x.id) === String(id));
+    if(!c){ alert('مخاطب پیدا نشد.'); return; }
+    const number = cleanPhone(c.p);
+    if(!number){ alert('برای این مخاطب شماره موبایل ثبت نشده است.'); return; }
+    const defaultText = presetText || `سلام ${c.n || ''} عزیز، امیدوارم حالتان خوب باشد. با احترام، ایمان سلطانی — مرکز ماساژ تن‌آرا`;
+    const body = window.prompt('متن پیامک را بررسی یا ویرایش کن؛ سپس برنامه پیامک گوشی باز می‌شود.', defaultText);
+    if(body === null) return;
+    const isiOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const href = `sms:${number}${isiOS ? '&' : '?'}body=${encodeURIComponent(body)}`;
+    window.location.href = href;
+  };
+  function renderSimpleClients(){
+    const search = (el('clientSearch')?.value || '').trim().toLowerCase();
+    const clients = (d.c || []).filter(c => `${c.n||''} ${c.p||''} ${c.job||c.occupation||''}`.toLowerCase().includes(search));
+    if(typeof renderBirthdays === 'function') renderBirthdays();
+    const box = el('clist');
+    if(!box) return;
+    box.innerHTML = clients.map(c => {
+      const job = c.job || c.occupation || '';
+      const id = JSON.stringify(c.id);
+      const number = cleanPhone(c.p);
+      return `<div class="item client-list-simple"><div class="client-head"><div><div class="client-name">${esc(c.n || 'بدون نام')}${job ? ` <span class="muted client-job">(${esc(job)})</span>` : ''}</div></div></div><div class="actions">${number ? `<button type="button" class="smallbtn" onclick='sendSmsClient(${id})'>ارسال پیامک</button><a href="tel:${escAttr(number)}" class="smallbtn">تماس</a>` : ''}<button type="button" class="smallbtn" onclick='clientHistory(${id})'>سابقه</button><button type="button" class="smallbtn" onclick='editClient(${id})'>ویرایش</button><button type="button" class="smallbtn danger" onclick='delClient(${id})'>حذف</button></div></div>`;
+    }).join('') || '<div class="item empty">مراجعی پیدا نشد.</div>';
+  }
+  window.renderClients = renderSimpleClients;
+  try { renderClients = renderSimpleClients; } catch(_) {}
+
+  function removeDuplicatePaymentSelector(){
+    const legacy = el('paymentAppointment');
+    if(legacy){ const wrap = legacy.closest('.pay-link'); if(wrap) wrap.remove(); else legacy.remove(); }
+    document.querySelectorAll('.pay-link').forEach(node => { if(!node.querySelector('#payAppt')) node.remove(); });
+  }
+  window.ensurePaymentLink = function(){
+    removeDuplicatePaymentSelector();
+    if(typeof window.updatePayAppointments === 'function') window.updatePayAppointments();
+  };
+  try { ensurePaymentLink = window.ensurePaymentLink; } catch(_) {}
+
+  window.tanaraPayAppt = function(id){
+    const a = (d.a || []).find(x => String(x.id) === String(id));
+    if(!a) return;
+    if(typeof showPageById === 'function') showPageById('pay');
+    const client = el('pc');
+    if(client){ client.value = String(a.c); if(typeof window.updatePayAppointments === 'function') window.updatePayAppointments(); }
+    const mode = el('payLinkMode');
+    if(mode){ mode.value = 'linked'; if(typeof window.togglePayLinkMode === 'function') window.togglePayLinkMode(); }
+    const sel = el('payAppt');
+    if(sel) sel.value = String(a.id);
+    const alreadyPaid = (d.p || []).filter(p => String(p.appointmentId || '') === String(a.id)).reduce((sum,p) => sum + Number(p.m || 0), 0);
+    const amount = el('pa');
+    if(amount) amount.value = Math.max(0, Number(a.m || 0) - alreadyPaid);
+    removeDuplicatePaymentSelector();
+  };
+
+  window.addPay = async function(e){
+    if(e && e.preventDefault) e.preventDefault();
+    if(!currentUser){ alert('ابتدا وارد حساب مدیریت شو.'); return; }
+    const clientId = el('pc')?.value;
+    const amount = Number(el('pa')?.value || 0);
+    const linked = el('payLinkMode')?.value === 'linked';
+    const appointmentId = linked ? (el('payAppt')?.value || '') : '';
+    if(!clientId){ alert('مراجعه‌کننده را انتخاب کن.'); return; }
+    if(!Number.isFinite(amount) || amount <= 0){ alert('مبلغ پرداختی معتبر نیست.'); return; }
+    if(linked && !appointmentId){ alert('برای ثبت پرداخت متصل، نوبت همین مراجعه‌کننده را انتخاب کن.'); return; }
+    const appt = appointmentId ? (d.a || []).find(a => String(a.id) === String(appointmentId)) : null;
+    if(appointmentId && (!appt || String(appt.c) !== String(clientId))){ alert('نوبت انتخاب‌شده متعلق به این مراجعه‌کننده نیست.'); return; }
+    const row = {owner_id:currentUser.id,client_id:clientId,amount,payment_method:el('payMethod')?.value || 'نقدی',payment_date:el('pd')?.value || today(),...(appointmentId ? {appointment_id:appointmentId} : {})};
+    const {data,error} = await sb.from('payments').insert(row).select('id,client_id,amount,payment_method,payment_date,appointment_id').single();
+    if(error){ alert('ثبت پرداخت ناموفق بود: ' + error.message); return; }
+    d.p.push({id:data.id,c:data.client_id,m:Number(data.amount || 0),date:data.payment_date,method:data.payment_method,appointmentId:data.appointment_id || null});
+    if(appointmentId){
+      const paidForVisit = (d.p || []).filter(x => String(x.appointmentId || '') === String(appointmentId)).reduce((sum,x) => sum + Number(x.m || 0), 0);
+      try { await sb.from('appointments').update({paid_amount:paidForVisit}).eq('id',appointmentId); } catch(err) { console.warn('به‌روزرسانی جمع پرداخت نوبت انجام نشد',err); }
+    }
+    el('payForm')?.reset();
+    if(typeof setupPaymentJalali === 'function') setupPaymentJalali(today());
+    removeDuplicatePaymentSelector();
+    if(typeof window.updatePayAppointments === 'function') window.updatePayAppointments();
+    if(typeof window.togglePayLinkMode === 'function') window.togglePayLinkMode();
+    if(typeof save === 'function') save(); else if(typeof render === 'function') render();
+    alert('پرداخت ثبت شد' + (appointmentId ? ' و به نوبت انتخاب‌شده متصل شد.' : '.'));
+  };
+
+  function boot(){ removeDuplicatePaymentSelector(); if(typeof window.updatePayAppointments === 'function') window.updatePayAppointments(); }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded',boot,{once:true}); else boot();
+})();
 </script>
 </body></html>

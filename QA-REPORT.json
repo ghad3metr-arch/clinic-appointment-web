@@ -1,0 +1,85 @@
+{
+  "project": "Tan Ara",
+  "date": "2026-10-17",
+  "static_checks_passed": true,
+  "tests": [
+    {
+      "test": "required_files_present",
+      "pass": true,
+      "missing": []
+    },
+    {
+      "test": "javascript_syntax",
+      "pass": true,
+      "checked_count": 12,
+      "errors": []
+    },
+    {
+      "test": "local_asset_references_index.html",
+      "pass": true,
+      "missing_refs": []
+    },
+    {
+      "test": "local_asset_references_booking.html",
+      "pass": true,
+      "missing_refs": []
+    },
+    {
+      "test": "local_asset_references_gift.html",
+      "pass": true,
+      "missing_refs": []
+    },
+    {
+      "test": "required_features_static_check",
+      "pass": true,
+      "facts": {
+        "shamsi_calendar": true,
+        "server_reminder_fields_loaded": true,
+        "old_appointments_can_set_reminder": true,
+        "sms_composer": true,
+        "service_date_reports": true,
+        "gift_card": true,
+        "linked_payment_handler": true
+      }
+    },
+    {
+      "test": "backend_source_check",
+      "pass": true,
+      "facts": {
+        "public_booking_push_handler": true,
+        "scheduled_reminder_handler": true,
+        "atomic_claim_function": true,
+        "clinic_timezone": true,
+        "cron_every_minute": true,
+        "token_kept_in_vault_not_embedded": true,
+        "push_event_idempotency": true
+      }
+    },
+    {
+      "test": "zip_integrity_and_root_layout",
+      "pass": true,
+      "testzip_bad_file": null,
+      "required_entries_missing": [],
+      "index_at_repository_root": true,
+      "entries": 16
+    }
+  ],
+  "live_backend_checks": {
+    "supabase_project": "bpqjeinlnslcmftzidmg",
+    "edge_function": "tanara-push v6 is ACTIVE; verify_jwt=false with handler-level request validation",
+    "cron_job": "tanara-reminder-push active, schedule * * * * *",
+    "last_cron_job_run": "2026-10-17 03:25:00 UTC, succeeded",
+    "direct_scheduled_function_test": "HTTP 200, ok=true, claimed=0 (no reminders were due during the test)",
+    "public_push_endpoint_sanity_test": "HTTP 400 with appointment_id is required for an intentionally malformed request; endpoint is responding and validating input.",
+    "new_migrations_applied": [
+      "20261017031605_add_private_push_notification_events",
+      "20261017032135_add_scheduled_appointment_reminders",
+      "20261017032209_schedule_tanara_reminder_push"
+    ]
+  },
+  "limitations": [
+    "Actual push display on the user phone has not been tested from this environment.",
+    "SMS requires user confirmation in the phone messaging app; automatic SMS provider is not configured.",
+    "Runtime login, booking, calendar interaction and UI rendering should be checked after deployment."
+  ]
+}
