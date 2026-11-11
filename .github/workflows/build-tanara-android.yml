@@ -66,5 +66,3 @@ jobs:
         with:
           name: tanara-android-debug-apk
           path: extracted/TanAra-Android-Widget-Project/02-Android-App/app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: error
-          retention-days: 14
