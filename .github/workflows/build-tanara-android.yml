@@ -13,10 +13,13 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
 
-      - uses: actions/setup-java@v4
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
@@ -26,27 +29,40 @@ jobs:
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platform-tools" "platforms;android-36" "build-tools;36.0.0"
 
-      - uses: gradle/actions/setup-gradle@v4
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.13'
 
-      - name: Extract project
+      - name: Extract Android project
         run: |
           unzip -q 'TanAra-Android-Widget-Source-2026-11-10(1)-1.zip' -d extracted
           test -f extracted/TanAra-Android-Widget-Project/02-Android-App/app/build.gradle.kts
-          
+
       - name: Fix widget description
         run: |
           sed -i 's/android:description="[^"]*"/android:description="@string\/tanara_widget_description"/' extracted/TanAra-Android-Widget-Project/02-Android-App/app/src/main/res/xml/tanara_widget_info.xml
           sed -i '/<\/resources>/i\    <string name="tanara_widget_description">نمایش نوبت‌های امروز و فردای دفتر تن‌آرا</string>' extracted/TanAra-Android-Widget-Project/02-Android-App/app/src/main/res/values/strings.xml
 
-
-      - name: Build APK
+      - name: Align Java compiler target with Kotlin 17
         run: |
-          gradle -p extracted/TanAra-Android-Widget-Project/02-Android-App --no-daemon :app:assembleDebug
+          cat > /tmp/tanara-jvm17.init.gradle <<'EOF'
+          allprojects {
+            tasks.withType(org.gradle.api.tasks.compile.JavaCompile).configureEach {
+              sourceCompatibility = "17"
+              targetCompatibility = "17"
+            }
+          }
+          EOF
 
-      - uses: actions/upload-artifact@v4
+      - name: Build Android APK
+        run: |
+          gradle -I /tmp/tanara-jvm17.init.gradle -p extracted/TanAra-Android-Widget-Project/02-Android-App --no-daemon :app:assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
         with:
           name: tanara-android-debug-apk
           path: extracted/TanAra-Android-Widget-Project/02-Android-App/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+          retention-days: 14
