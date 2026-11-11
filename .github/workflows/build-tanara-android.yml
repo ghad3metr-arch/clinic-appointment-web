@@ -44,13 +44,15 @@ jobs:
           sed -i 's/android:description="[^"]*"/android:description="@string\/tanara_widget_description"/' extracted/TanAra-Android-Widget-Project/02-Android-App/app/src/main/res/xml/tanara_widget_info.xml
           sed -i '/<\/resources>/i\    <string name="tanara_widget_description">نمایش نوبت‌های امروز و فردای دفتر تن‌آرا</string>' extracted/TanAra-Android-Widget-Project/02-Android-App/app/src/main/res/values/strings.xml
 
-      - name: Align Java compiler target with Kotlin 17
+      - name: Align Java target with Kotlin 17 after project evaluation
         run: |
           cat > /tmp/tanara-jvm17.init.gradle <<'EOF'
-          allprojects {
-            tasks.withType(org.gradle.api.tasks.compile.JavaCompile).configureEach {
-              sourceCompatibility = "17"
-              targetCompatibility = "17"
+          gradle.projectsEvaluated {
+            allprojects {
+              tasks.withType(org.gradle.api.tasks.compile.JavaCompile).all {
+                sourceCompatibility = "17"
+                targetCompatibility = "17"
+              }
             }
           }
           EOF
