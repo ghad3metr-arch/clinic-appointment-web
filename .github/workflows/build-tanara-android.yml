@@ -34,6 +34,12 @@ jobs:
         run: |
           unzip -q 'TanAra-Android-Widget-Source-2026-11-10(1)-1.zip' -d extracted
           test -f extracted/TanAra-Android-Widget-Project/02-Android-App/app/build.gradle.kts
+          
+      - name: Fix widget description
+        run: |
+          sed -i 's/android:description="[^"]*"/android:description="@string\/tanara_widget_description"/' extracted/TanAra-Android-Widget-Project/02-Android-App/app/src/main/res/xml/tanara_widget_info.xml
+          sed -i '/<\/resources>/i\    <string name="tanara_widget_description">نمایش نوبت‌های امروز و فردای دفتر تن‌آرا</string>' extracted/TanAra-Android-Widget-Project/02-Android-App/app/src/main/res/values/strings.xml
+
 
       - name: Build APK
         run: |
