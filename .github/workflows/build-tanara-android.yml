@@ -1,10 +1,11 @@
+
 name: Build TanAra Android APK
 
 on:
   workflow_dispatch:
   push:
     paths:
-      - 'TanAra-Android-Widget-Source-2026-11-10.zip'
+      - 'TanAra-Android-Widget-Source-2026-11-10(1)-1.zip'
       - '.github/workflows/build-tanara-android.yml'
 
 permissions:
@@ -21,7 +22,10 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - uses: android-actions/setup-android@v3
+      - name: Install Android SDK
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platform-tools" "platforms;android-36" "build-tools;36.0.0"
 
       - uses: gradle/actions/setup-gradle@v4
         with:
@@ -29,7 +33,7 @@ jobs:
 
       - name: Extract project
         run: |
-          unzip -q TanAra-Android-Widget-Source-2026-11-10.zip -d extracted
+          unzip -q 'TanAra-Android-Widget-Source-2026-11-10(1)-1.zip' -d extracted
           test -f extracted/TanAra-Android-Widget-Project/02-Android-App/app/build.gradle.kts
 
       - name: Build APK
