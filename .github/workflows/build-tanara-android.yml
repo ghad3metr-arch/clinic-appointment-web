@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     paths:
-      - 'TanAra-Android-Widget-Source-2026-11-10(1)-1.zip'
+      - 'TanAra-Android-FIXED.zip'
       - '.github/workflows/build-tanara-android.yml'
 
 permissions:
@@ -36,7 +36,7 @@ jobs:
 
       - name: Extract Android project
         run: |
-          unzip -q 'TanAra-Android-Widget-Source-2026-11-10(1)-1.zip' -d extracted
+          unzip -q 'TanAra-Android-FIXED.zip' -d extracted
           test -f extracted/TanAra-Android-Widget-Project/02-Android-App/app/build.gradle.kts
 
       - name: Fix widget description
